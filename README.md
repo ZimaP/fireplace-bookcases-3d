@@ -1,16 +1,16 @@
 # Fireplace Bookcases — Parametric 3D Study
 
-![Fireplace bookcases perspective](docs/perspective-review.jpg)
+![Reference-aligned fireplace bookcases perspective](docs/hero-reference-aligned.png)
 
 A completely new, standalone Three.js project for the supplied fireplace-wall layout. It models the room shell, central fireplace/chimney breast, and two detailed built-in bookcases. Overall dimensions are parametric while drawing-derived construction thicknesses remain independent of overall resizing.
 
 ## Included in the baseline
 
 - Two matching built-in bookcases with two upper bays per side.
-- Four lower Shaker doors per bookcase, recessed panels, face frames, hardware, interior shelves, finished backs, toe kicks, levelers, fillers, transition top, and crown profile.
+- Four lower Shaker doors per bookcase, recessed panels, face frames, hardware, interior shelves, finished backs, toe kicks, levelers, one outboard finished filler with plywood backer, one fixed 1-1/4-inch transition/counter, and a flat field-fit top/crown filler.
 - Adjustable upper shelves with visible 5 mm pin rows on 2-inch centers.
 - Automatic drawing-based shelf-span logic: 1-inch MDF through 27 inches, 1-1/4-inch MDF through 31 inches, 1-1/2-inch MDF through 36 inches, and a support warning above 36 inches.
-- Central chimney breast, herringbone field, stone surround, classical mantel, hearth, detailed electric insert, logs, grate, embers, and animated flames.
+- Central chimney breast with a painted classical surround, low hearth, recessed herringbone firebox, relief-paneled mantel and pilasters, electric insert, logs, grate, embers, and restrained animated flames.
 - Room floor, back wall, side returns, baseboard, lighting, shadows, camera presets, dimension callouts, finish options, part inspection, URL share state, and PNG export.
 
 ## Fixed drawing-derived construction values

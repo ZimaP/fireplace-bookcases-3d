@@ -54,7 +54,7 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 0.84;
+renderer.toneMappingExposure = 0.72;
 renderer.setClearColor(0x000000, 0);
 
 const labelRenderer = new CSS2DRenderer();
@@ -66,6 +66,7 @@ labelRenderer.domElement.style.pointerEvents = 'none';
 const pmremGenerator = new THREE.PMREMGenerator(renderer);
 const roomEnvironment = new RoomEnvironment();
 scene.environment = pmremGenerator.fromScene(roomEnvironment, 0.035).texture;
+scene.environmentIntensity = 0.68;
 pmremGenerator.dispose();
 roomEnvironment.dispose();
 
@@ -88,9 +89,8 @@ const ui = createAppUi(app, config, {
     flashStatus('Model reset to the drawing-based starting dimensions.');
   },
   onFitBookcases: () => {
-    const sideClearance = Math.max(config.sideFiller, 1.5);
     const fittedWidth = roundTo(
-      (config.roomWidth - config.chimneyWidth) / 2 - config.centerGap - sideClearance,
+      (config.roomWidth - config.chimneyWidth) / 2 - config.centerGap,
       0.125,
     );
     const next = clampConfig({

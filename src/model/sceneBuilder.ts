@@ -65,11 +65,11 @@ function buildLighting(config: ModelConfig): THREE.Group {
   group.name = 'Architectural lighting';
   group.userData.pickable = false;
 
-  const hemisphere = new THREE.HemisphereLight(0xf6f1e8, 0x58606a, 0.55);
+  const hemisphere = new THREE.HemisphereLight(0xf6f1e8, 0x58606a, 0.38);
   hemisphere.name = 'Ambient room light';
   group.add(hemisphere);
 
-  const key = new THREE.DirectionalLight(0xfff5e8, 1.65);
+  const key = new THREE.DirectionalLight(0xfff5e8, 1.12);
   key.name = 'Front key light';
   key.position.set(-config.roomWidth * 0.34, config.roomHeight * 1.35, config.roomDepth * 0.9);
   key.target.position.set(0, config.roomHeight * 0.42, config.chimneyDepth + 6);
@@ -86,7 +86,7 @@ function buildLighting(config: ModelConfig): THREE.Group {
   key.shadow.camera.far = config.roomDepth * 3.2;
   group.add(key, key.target);
 
-  const fill = new THREE.DirectionalLight(0xcbd9ed, 0.52);
+  const fill = new THREE.DirectionalLight(0xcbd9ed, 0.28);
   fill.name = 'Cool fill light';
   fill.position.set(config.roomWidth * 0.52, config.roomHeight * 0.8, config.roomDepth * 0.45);
   fill.target.position.set(0, config.roomHeight * 0.45, config.chimneyDepth);
@@ -94,7 +94,7 @@ function buildLighting(config: ModelConfig): THREE.Group {
 
   const frontArea = new THREE.RectAreaLight(
     0xfff2de,
-    Math.max(18, config.roomWidth * 0.11),
+    Math.max(7, config.roomWidth * 0.04),
     config.roomWidth * 0.72,
     config.roomHeight * 0.42,
   );
@@ -103,7 +103,7 @@ function buildLighting(config: ModelConfig): THREE.Group {
   frontArea.lookAt(0, config.roomHeight * 0.45, config.chimneyDepth + 5);
   group.add(frontArea);
 
-  const leftWash = new THREE.SpotLight(0xffe5c5, 90, config.roomDepth * 1.2, Math.PI / 4.2, 0.62, 1.2);
+  const leftWash = new THREE.SpotLight(0xffe5c5, 32, config.roomDepth * 1.2, Math.PI / 4.2, 0.62, 1.2);
   leftWash.name = 'Left bookcase wash';
   leftWash.position.set(-config.roomWidth * 0.25, config.roomHeight * 0.93, config.roomDepth * 0.45);
   leftWash.target.position.set(-config.roomWidth * 0.24, config.roomHeight * 0.5, 8);

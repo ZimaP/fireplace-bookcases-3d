@@ -11,7 +11,6 @@ import {
   addEdgeHighlight,
   createBox,
   createCylinderPart,
-  createLinearMoulding,
   createShakerDoor,
   setPartMetadata,
 } from './primitives';
@@ -32,6 +31,11 @@ export function buildBookcase(
   const adjustableShelfThickness = side === 'left'
     ? derived.leftAdjustableShelfThickness
     : derived.rightAdjustableShelfThickness;
+  const finishedDepth = Math.max(
+    config.baseDepth + 1.5,
+    config.upperDepth + config.crownProjection,
+    config.showHardware ? config.baseDepth + 2 : 0,
+  );
   const group = new THREE.Group();
   group.name = `${capitalize(side)} fireplace bookcase`;
   group.position.x = side === 'left' ? derived.leftBookcaseX : derived.rightBookcaseX;
@@ -40,13 +44,18 @@ export function buildBookcase(
     category: 'Built-in assembly',
     width,
     height: config.bookcaseHeight,
-    depth: config.baseDepth,
+    depth: finishedDepth,
     material: 'Paint-grade MDF / plywood',
     note: 'Two-bay upper bookcase over four-door base cabinet with crown and field fillers.',
   });
 
   const frontFrameDepth = CONSTRUCTION.carcassThickness;
-  const caseWidth = width - config.sideFiller * 2;
+  const caseWidth = width - config.sideFiller;
+  const caseOffsetX = side === 'left' ? config.sideFiller / 2 : -config.sideFiller / 2;
+  const cabinetGroup = new THREE.Group();
+  cabinetGroup.name = `${capitalize(side)} aligned cabinet carcass`;
+  cabinetGroup.position.x = caseOffsetX;
+  group.add(cabinetGroup);
   const upperStartY = derived.upperStartY;
   const crownBaseY = config.bookcaseHeight - config.crownHeight;
   const clearUpperHeight = crownBaseY - upperStartY - CONSTRUCTION.faceFrameWidth;
@@ -60,30 +69,77 @@ export function buildBookcase(
   const upperFrontZ = config.upperDepth;
   const baseFrontZ = config.baseDepth;
 
-  // Full-height field fillers / scribes shown at the outside edges in the reference detail.
-  const fillerHeight = config.bookcaseHeight - config.toeKickHeight;
-  for (const direction of [-1, 1] as const) {
-    const filler = createBox({
-      name: `${capitalize(side)} ${direction < 0 ? 'left' : 'right'} field filler`,
-      category: 'Field filler / scribe',
-      width: config.sideFiller,
-      height: fillerHeight,
-      depth: config.upperDepth + 0.05,
-      x: direction * (width / 2 - config.sideFiller / 2),
-      y: config.toeKickHeight + fillerHeight / 2,
-      z: config.upperDepth / 2,
-      material: materials.cabinet,
-      radius: 0.045,
-      note: 'Field-fit finished filler; minimum width shown on the drawing is 3/4 inch.',
-      materialLabel: 'Paint-grade filler',
-    });
-    addEdgeHighlight(filler);
-    group.add(filler);
+  // Floor-to-top finished filler faces with concealed plywood backers, as shown
+  // in the plan/detail callout. Base and upper faces follow their respective
+  // cabinet depths instead of reading as one unsupported solid block.
+  for (const direction of [side === 'left' ? -1 : 1] as const) {
+    const fillerX = direction * (width / 2 - config.sideFiller / 2);
+    const sideName = direction < 0 ? 'left' : 'right';
+    const faceDepth = 1;
+    const backerDepth = CONSTRUCTION.carcassThickness;
+    const upperFillerHeight = Math.max(0.1, config.bookcaseHeight - upperStartY);
+    const fillerParts = [
+      createBox({
+        name: `${capitalize(side)} ${sideName} base field filler`,
+        category: 'Field filler / scribe',
+        width: config.sideFiller,
+        height: config.baseHeight,
+        depth: faceDepth,
+        x: fillerX,
+        y: config.baseHeight / 2,
+        z: config.baseDepth + frontFrameDepth - faceDepth / 2,
+        material: materials.cabinet,
+        radius: 0.035,
+        note: 'Field-fit finished filler; minimum width shown on the drawing is 3/4 inch.',
+        materialLabel: '1 inch finished paint-grade filler face',
+      }),
+      createBox({
+        name: `${capitalize(side)} ${sideName} upper field filler`,
+        category: 'Field filler / scribe',
+        width: config.sideFiller,
+        height: upperFillerHeight,
+        depth: faceDepth,
+        x: fillerX,
+        y: upperStartY + upperFillerHeight / 2,
+        z: config.upperDepth + frontFrameDepth - faceDepth / 2,
+        material: materials.cabinet,
+        radius: 0.035,
+        note: 'Field-fit finished filler; minimum width shown on the drawing is 3/4 inch.',
+        materialLabel: '1 inch finished paint-grade filler face',
+      }),
+      createBox({
+        name: `${capitalize(side)} ${sideName} base filler backer`,
+        category: 'Unfinished filler backer',
+        width: config.sideFiller,
+        height: config.baseHeight,
+        depth: backerDepth,
+        x: fillerX,
+        y: config.baseHeight / 2,
+        z: config.baseDepth + frontFrameDepth - faceDepth - backerDepth / 2,
+        material: materials.interiorBack,
+        materialLabel: 'Unfinished plywood backer',
+      }),
+      createBox({
+        name: `${capitalize(side)} ${sideName} upper filler backer`,
+        category: 'Unfinished filler backer',
+        width: config.sideFiller,
+        height: upperFillerHeight,
+        depth: backerDepth,
+        x: fillerX,
+        y: upperStartY + upperFillerHeight / 2,
+        z: config.upperDepth + frontFrameDepth - faceDepth - backerDepth / 2,
+        material: materials.interiorBack,
+        materialLabel: 'Unfinished plywood backer',
+      }),
+    ];
+    addEdgeHighlight(fillerParts[0]);
+    addEdgeHighlight(fillerParts[1]);
+    group.add(...fillerParts);
   }
 
-  buildBaseCabinet({
+  const baseShelfPinMeshes = buildBaseCabinet({
     side,
-    group,
+    group: cabinetGroup,
     config,
     materials,
     width,
@@ -101,15 +157,15 @@ export function buildBookcase(
   // Countertop / transition shelf between base and upper.
   const counter = createBox({
     name: `${capitalize(side)} bookcase countertop`,
-    category: 'Countertop / fixed shelf',
-    width: width + 1.6,
+    category: 'Countertop / fixed transition shelf',
+    width,
     height: CONSTRUCTION.fixedTransitionShelfThickness,
-    depth: config.baseDepth + 1.35,
+    depth: config.baseDepth + 1.5,
     y: config.baseHeight + CONSTRUCTION.fixedTransitionShelfThickness / 2,
-    z: (config.baseDepth + 1.35) / 2 - 0.15,
+    z: (config.baseDepth + 1.5) / 2,
     material: materials.cabinetEdge,
-    radius: 0.11,
-    note: 'Finished transition top with front and side overhang.',
+    radius: 0.055,
+    note: 'Single drawing-defined 1-1/4 inch transition shelf with a modest finished front projection.',
     materialLabel: 'Paint-grade MDF with finished edge',
   });
   addEdgeHighlight(counter, 0x6d665d, 0.2);
@@ -117,7 +173,7 @@ export function buildBookcase(
 
   buildUpperBookcase({
     side,
-    group,
+    group: cabinetGroup,
     config,
     materials,
     width,
@@ -145,16 +201,19 @@ export function buildBookcase(
   });
 
   const shelfPinMeshes = config.showPinHoles
-    ? buildPinHoles({
+    ? [
+      ...baseShelfPinMeshes,
+      ...buildPinHoles({
         side,
-        group,
+        group: cabinetGroup,
         config,
         materials,
         bayWidth,
         bayCenterOffset,
         upperStartY,
         crownBaseY,
-      })
+      }),
+    ]
     : [];
 
   if (config.showReferenceGhost) {
@@ -163,9 +222,9 @@ export function buildBookcase(
       category: 'Reference envelope',
       width,
       height: config.bookcaseHeight,
-      depth: config.baseDepth,
+      depth: finishedDepth,
       y: config.bookcaseHeight / 2,
-      z: config.baseDepth / 2,
+      z: finishedDepth / 2,
       material: materials.ghost,
       castShadow: false,
       receiveShadow: false,
@@ -194,7 +253,7 @@ interface BaseBuildOptions {
   frontFrameDepth: number;
 }
 
-function buildBaseCabinet(options: BaseBuildOptions): void {
+function buildBaseCabinet(options: BaseBuildOptions): THREE.InstancedMesh[] {
   const {
     side,
     group,
@@ -304,6 +363,32 @@ function buildBaseCabinet(options: BaseBuildOptions): void {
     });
     group.add(shelf);
   }
+
+  const supportGeometry = new THREE.CylinderGeometry(
+    CONSTRUCTION.shelfPinDiameter / 2,
+    CONSTRUCTION.shelfPinDiameter / 2,
+    0.34,
+    14,
+  );
+  supportGeometry.rotateZ(Math.PI / 2);
+  const supports = new THREE.InstancedMesh(supportGeometry, materials.metal, 8);
+  supports.name = `${label} base concealed shelf supports`;
+  supports.castShadow = true;
+  supports.receiveShadow = true;
+  supports.userData.pickable = false;
+  const supportMatrix = new THREE.Matrix4();
+  let supportIndex = 0;
+  for (const direction of [-1, 1] as const) {
+    const bayCenter = direction * bayCenterOffset;
+    for (const x of [bayCenter - bayWidth / 2 + 0.19, bayCenter + bayWidth / 2 - 0.19]) {
+      for (const z of [2, config.baseDepth - 2.1]) {
+        supportMatrix.makeTranslation(x, baseShelfSupportY, z);
+        supports.setMatrixAt(supportIndex++, supportMatrix);
+      }
+    }
+  }
+  supports.instanceMatrix.needsUpdate = true;
+  group.add(supports);
 
   // Recessed toe kick and individual adjustable cabinet feet.
   const toeKick = createBox({
@@ -448,6 +533,56 @@ function buildBaseCabinet(options: BaseBuildOptions): void {
     });
     group.add(door);
   }
+
+  if (!config.showPinHoles) return [];
+  const firstHoleY = baseCaseBottom + 3;
+  const lastHoleY = config.baseHeight - 3;
+  const levels = Math.max(
+    1,
+    Math.floor((lastHoleY - firstHoleY) / CONSTRUCTION.shelfPinSpacing) + 1,
+  );
+  const holeGeometry = new THREE.CylinderGeometry(
+    CONSTRUCTION.shelfPinDiameter / 2,
+    CONSTRUCTION.shelfPinDiameter / 2,
+    0.065,
+    14,
+  );
+  holeGeometry.rotateZ(Math.PI / 2);
+  const holes = new THREE.InstancedMesh(holeGeometry, materials.hole, levels * 2 * 2 * 2);
+  holes.name = `${label} base 5 mm shelf-pin holes`;
+  holes.castShadow = false;
+  holes.receiveShadow = false;
+  holes.userData.pickable = false;
+  holes.userData.part = {
+    name: `${label} base 5 mm shelf-pin drilling`,
+    category: 'Shelf-pin system',
+    width: CONSTRUCTION.shelfPinDiameter,
+    height: (levels - 1) * CONSTRUCTION.shelfPinSpacing,
+    depth: 0.065,
+    material: '5 mm drilled holes',
+    note: 'Front and rear lower-cabinet rows on the drawing-defined 2-inch grid.',
+  };
+  const holeMatrix = new THREE.Matrix4();
+  let holeIndex = 0;
+  for (const direction of [-1, 1] as const) {
+    const bayCenter = direction * bayCenterOffset;
+    const surfaces = [bayCenter - bayWidth / 2 + 0.025, bayCenter + bayWidth / 2 - 0.025];
+    for (const x of surfaces) {
+      for (const z of [2.15, config.baseDepth - 2.2]) {
+        for (let level = 0; level < levels; level += 1) {
+          holeMatrix.makeTranslation(
+            x,
+            firstHoleY + level * CONSTRUCTION.shelfPinSpacing,
+            z,
+          );
+          holes.setMatrixAt(holeIndex++, holeMatrix);
+        }
+      }
+    }
+  }
+  holes.instanceMatrix.needsUpdate = true;
+  group.add(holes);
+  return [holes];
 }
 
 interface UpperBuildOptions {
@@ -537,20 +672,9 @@ function buildUpperBookcase(options: UpperBuildOptions): void {
   });
   group.add(centerDivider);
 
-  // Bottom and top fixed shelves/rails.
+  // The countertop above is the single fixed lower/transition shelf shown in
+  // the elevation. Only the separate fixed top remains inside the upper case.
   group.add(
-    createBox({
-      name: `${label} upper fixed bottom shelf`,
-      category: 'Fixed shelf',
-      width: caseWidth - 2 * CONSTRUCTION.carcassThickness,
-      height: CONSTRUCTION.fixedTransitionShelfThickness,
-      depth: config.upperDepth,
-      y: upperStartY + CONSTRUCTION.fixedTransitionShelfThickness / 2,
-      z: config.upperDepth / 2,
-      material: materials.cabinet,
-      note: 'Fixed shelf above base cabinet.',
-      materialLabel: '1-1/4 inch fixed MDF shelf',
-    }),
     createBox({
       name: `${label} upper fixed top shelf`,
       category: 'Fixed shelf',
@@ -611,32 +735,41 @@ function buildUpperBookcase(options: UpperBuildOptions): void {
   // Adjustable shelves, each with a distinct finished front edge and four concealed support pins.
   const shelfDepth = config.upperDepth - 0.5;
   const shelfFrontZ = shelfDepth;
-  const pinRadius = CONSTRUCTION.shelfPinDiameter / 2;
-  const pinGeometry = new THREE.CylinderGeometry(pinRadius, pinRadius, 0.34, 14);
-  pinGeometry.rotateZ(Math.PI / 2);
-  const pinCount = config.shelfCount * 2 * 4;
-  const pins = new THREE.InstancedMesh(pinGeometry, materials.metal, pinCount);
-  pins.name = `${label} concealed shelf supports`;
-  pins.castShadow = true;
-  pins.receiveShadow = true;
-  pins.userData.pickable = false;
-  const matrix = new THREE.Matrix4();
-  let pinIndex = 0;
   const firstPinY = upperStartY + 3;
   const lastPinY = crownBaseY - 3;
   const availablePinLevels = Math.max(
     1,
     Math.floor((lastPinY - firstPinY) / CONSTRUCTION.shelfPinSpacing) + 1,
   );
+  const shelfTotal = Math.min(config.shelfCount, availablePinLevels);
+  const pinRadius = CONSTRUCTION.shelfPinDiameter / 2;
+  const pinGeometry = new THREE.CylinderGeometry(pinRadius, pinRadius, 0.34, 14);
+  pinGeometry.rotateZ(Math.PI / 2);
+  const pins = new THREE.InstancedMesh(pinGeometry, materials.metal, shelfTotal * 2 * 4);
+  pins.name = `${label} concealed shelf supports`;
+  pins.castShadow = true;
+  pins.receiveShadow = true;
+  pins.userData.pickable = false;
+  const matrix = new THREE.Matrix4();
+  let pinIndex = 0;
+  const openingTopY = crownBaseY - CONSTRUCTION.faceFrameWidth;
+  const openingHeight = Math.max(1, openingTopY - upperStartY);
 
-  for (let shelfIndex = 0; shelfIndex < config.shelfCount; shelfIndex += 1) {
-    // Pick a distinct, evenly distributed pin level whenever the opening has enough levels.
-    const levelIndex = Math.min(
-      availablePinLevels - 1,
-      Math.floor(((shelfIndex + 0.5) * availablePinLevels) / config.shelfCount),
+  for (let shelfIndex = 0; shelfIndex < shelfTotal; shelfIndex += 1) {
+    // Divide the clear elevation into equal openings, then move each shelf to
+    // the nearest drawing-defined two-inch pin level without allowing two
+    // shelves to collapse onto the same support row.
+    const idealShelfY = upperStartY + openingHeight * ((shelfIndex + 1) / (shelfTotal + 1));
+    const preferredLevel = Math.round(
+      (
+        idealShelfY - adjustableShelfThickness / 2 - 0.12 - firstPinY
+      ) / CONSTRUCTION.shelfPinSpacing,
     );
+    const minimumLevel = shelfIndex;
+    const maximumLevel = availablePinLevels - (shelfTotal - shelfIndex);
+    const levelIndex = Math.max(minimumLevel, Math.min(maximumLevel, preferredLevel));
     const supportY = snapToShelfPinGrid(
-      firstPinY + levelIndex * CONSTRUCTION.shelfPinSpacing,
+      firstPinY + Math.max(0, levelIndex) * CONSTRUCTION.shelfPinSpacing,
       firstPinY,
     );
     const shelfY = supportY + adjustableShelfThickness / 2 + 0.12;
@@ -723,45 +856,21 @@ interface CrownBuildOptions {
 function buildCrown(options: CrownBuildOptions): void {
   const { side, group, config, materials, width, upperFrontZ, crownBaseY } = options;
   const label = capitalize(side);
-  const crown = createLinearMoulding({
+  const crown = createBox({
     name: `${label} bookcase crown moulding`,
-    length: width + config.crownProjection * 2,
+    category: 'Crown / top filler',
+    width,
     height: config.crownHeight,
-    projection: config.crownProjection + 0.9,
-    y: crownBaseY,
-    z: upperFrontZ + config.crownProjection + 0.85,
+    depth: config.crownProjection,
+    y: crownBaseY + config.crownHeight / 2,
+    z: upperFrontZ + config.crownProjection / 2,
     material: materials.cabinetEdge,
-    profile: 'crown',
+    radius: 0.025,
     note: 'Field-adjustable crown zone; drawing notes approximately 1-1/2 inches may be added or removed.',
+    materialLabel: 'Paint-grade flat crown / top filler',
   });
+  addEdgeHighlight(crown, 0x665f56, 0.16);
   group.add(crown);
-
-  group.add(
-    createBox({
-      name: `${label} crown top cap`,
-      category: 'Crown moulding',
-      width: width + config.crownProjection * 2.4,
-      height: 0.5,
-      depth: config.upperDepth + config.crownProjection * 2.2,
-      y: config.bookcaseHeight - 0.25,
-      z: (config.upperDepth + config.crownProjection * 2.2) / 2 - 0.2,
-      material: materials.cabinetEdge,
-      radius: 0.06,
-      materialLabel: 'Paint-grade crown cap',
-    }),
-    createBox({
-      name: `${label} crown bed moulding`,
-      category: 'Crown moulding',
-      width: width + config.crownProjection * 1.2,
-      height: 0.56,
-      depth: config.upperDepth + config.crownProjection * 1.1,
-      y: crownBaseY + 0.28,
-      z: (config.upperDepth + config.crownProjection * 1.1) / 2,
-      material: materials.cabinetEdge,
-      radius: 0.05,
-      materialLabel: 'Paint-grade crown bed',
-    }),
-  );
 
   const fillerHeight = Math.max(0, config.roomHeight - config.bookcaseHeight);
   if (fillerHeight > 0.1) {

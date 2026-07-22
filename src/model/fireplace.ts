@@ -4,7 +4,6 @@ import type { MaterialLibrary } from './materials';
 import {
   addEdgeHighlight,
   createBox,
-  createCylinderPart,
   createLinearMoulding,
   createRosette,
   setPartMetadata,
@@ -22,19 +21,20 @@ export function buildFireplace(
   const group = new THREE.Group();
   group.name = 'Classical fireplace and electric firebox';
   group.position.z = config.chimneyDepth;
+  const finishedDepth = Math.max(config.hearthDepth, config.mantelDepth);
   setPartMetadata(group, {
     name: 'Classical fireplace and electric firebox',
     category: 'Fireplace assembly',
     width: config.hearthWidth,
     height: config.mantelHeight,
-    depth: config.hearthDepth,
+    depth: finishedDepth,
     material: 'Paint-grade mantel, stone hearth, electric insert',
     note: 'Decorative mantel modeled from the reference elevation and placed on the room-layout chimney breast.',
   });
 
-  const openingBottom = 5.25;
+  const openingBottom = 1;
   const openingTop = openingBottom + config.fireplaceOpeningHeight;
-  const fireboxDepth = Math.max(4, config.mantelDepth * 0.48);
+  const fireboxDepth = Math.max(1.2, config.mantelDepth * 0.12);
   const mantelFaceZ = config.mantelDepth * 0.62;
   const shelfTopY = config.mantelHeight;
 
@@ -42,29 +42,29 @@ export function buildFireplace(
     name: 'Fireplace hearth slab',
     category: 'Hearth',
     width: config.hearthWidth,
-    height: 1.5,
+    height: 0.75,
     depth: config.hearthDepth,
-    y: 0.75,
-    z: config.hearthDepth / 2 - 1.5,
+    y: 0.375,
+    z: config.hearthDepth / 2,
     material: materials.stone,
-    radius: 0.12,
-    note: 'Projected stone hearth centered on the electric firebox.',
+    radius: 0.045,
+    note: 'Low projecting study hearth; the references do not provide a fabrication depth.',
     materialLabel: 'Honed stone',
   });
   addEdgeHighlight(hearth, 0x615a50, 0.18);
   group.add(hearth);
 
   const fireboxBack = createBox({
-    name: 'Electric firebox body',
+    name: 'Recessed firebox backing',
     category: 'Electric fireplace insert',
-    width: config.fireplaceOpeningWidth + 5.5,
-    height: config.fireplaceOpeningHeight + 5,
-    depth: fireboxDepth,
+    width: config.fireplaceOpeningWidth,
+    height: config.fireplaceOpeningHeight,
+    depth: 0.28,
     y: openingBottom + config.fireplaceOpeningHeight / 2,
-    z: fireboxDepth / 2 + 0.4,
-    material: materials.firebox,
-    radius: 0.3,
-    materialLabel: 'Black steel insert',
+    z: 0.14,
+    material: materials.stoneDark,
+    radius: 0.04,
+    materialLabel: 'Dark recessed firebox backing',
   });
   group.add(fireboxBack);
 
@@ -76,7 +76,7 @@ export function buildFireplace(
   );
   group.add(tileGroup);
 
-  buildFireboxFrame(group, config, materials, openingBottom, fireboxDepth);
+  buildFireboxFrame(group, config, materials, openingBottom);
   buildMantel(group, config, materials, openingBottom, openingTop, mantelFaceZ, shelfTopY);
 
   const fire = buildAnimatedFire(config, materials, openingBottom, fireboxDepth);
@@ -89,9 +89,9 @@ export function buildFireplace(
       category: 'Reference envelope',
       width: config.mantelWidth,
       height: config.mantelHeight,
-      depth: config.mantelDepth,
+      depth: finishedDepth,
       y: config.mantelHeight / 2,
-      z: config.mantelDepth / 2,
+      z: finishedDepth / 2,
       material: materials.ghost,
       castShadow: false,
       receiveShadow: false,
@@ -113,13 +113,10 @@ function buildFireboxFrame(
   config: ModelConfig,
   materials: MaterialLibrary,
   openingBottom: number,
-  fireboxDepth: number,
 ): void {
-  const frameWidth = 1.25;
-  const outerWidth = config.fireplaceOpeningWidth + frameWidth * 2;
-  const outerHeight = config.fireplaceOpeningHeight + frameWidth * 2;
-  const frameZ = fireboxDepth + 0.75;
-  const frameDepth = 0.82;
+  const frameWidth = 0.55;
+  const frameZ = 0.92;
+  const frameDepth = 0.26;
   const centerY = openingBottom + config.fireplaceOpeningHeight / 2;
 
   group.add(
@@ -127,50 +124,50 @@ function buildFireboxFrame(
       name: 'Firebox left metal frame',
       category: 'Firebox trim',
       width: frameWidth,
-      height: outerHeight,
+      height: config.fireplaceOpeningHeight,
       depth: frameDepth,
-      x: -outerWidth / 2 + frameWidth / 2,
+      x: -config.fireplaceOpeningWidth / 2 + frameWidth / 2,
       y: centerY,
       z: frameZ,
-      material: materials.metal,
-      radius: 0.09,
+      material: materials.firebox,
+      radius: 0.035,
       materialLabel: 'Dark steel trim',
     }),
     createBox({
       name: 'Firebox right metal frame',
       category: 'Firebox trim',
       width: frameWidth,
-      height: outerHeight,
+      height: config.fireplaceOpeningHeight,
       depth: frameDepth,
-      x: outerWidth / 2 - frameWidth / 2,
+      x: config.fireplaceOpeningWidth / 2 - frameWidth / 2,
       y: centerY,
       z: frameZ,
-      material: materials.metal,
-      radius: 0.09,
+      material: materials.firebox,
+      radius: 0.035,
       materialLabel: 'Dark steel trim',
     }),
     createBox({
       name: 'Firebox top metal frame',
       category: 'Firebox trim',
-      width: config.fireplaceOpeningWidth,
+      width: config.fireplaceOpeningWidth - frameWidth * 2,
       height: frameWidth,
       depth: frameDepth,
-      y: openingBottom + config.fireplaceOpeningHeight + frameWidth / 2,
+      y: openingBottom + config.fireplaceOpeningHeight - frameWidth / 2,
       z: frameZ,
-      material: materials.metal,
-      radius: 0.09,
+      material: materials.firebox,
+      radius: 0.035,
       materialLabel: 'Dark steel trim',
     }),
     createBox({
       name: 'Firebox bottom metal frame',
       category: 'Firebox trim',
-      width: config.fireplaceOpeningWidth,
+      width: config.fireplaceOpeningWidth - frameWidth * 2,
       height: frameWidth,
       depth: frameDepth,
-      y: openingBottom - frameWidth / 2,
+      y: openingBottom + frameWidth / 2,
       z: frameZ,
-      material: materials.metal,
-      radius: 0.09,
+      material: materials.firebox,
+      radius: 0.035,
       materialLabel: 'Dark steel trim',
     }),
   );
@@ -182,7 +179,7 @@ function buildFireboxFrame(
     height: config.fireplaceOpeningHeight - 0.55,
     depth: 0.12,
     y: centerY,
-    z: frameZ + frameDepth / 2 + 0.09,
+    z: frameZ + frameDepth / 2 + 0.05,
     material: materials.glass,
     castShadow: false,
     receiveShadow: false,
@@ -200,59 +197,69 @@ function buildMantel(
   mantelFaceZ: number,
   shelfTopY: number,
 ): void {
-  const surroundGap = 2.25;
-  const pilasterWidth = Math.max(6.5, (config.mantelWidth - config.fireplaceOpeningWidth) / 2 - 3.5);
-  const pilasterCenterX = config.fireplaceOpeningWidth / 2 + surroundGap + pilasterWidth / 2;
-  const pilasterBottom = 1.5;
-  const friezeBottom = Math.max(openingTop + 3.4, config.mantelHeight - 13.2);
-  const shaftBottom = 8.8;
-  const shaftTop = friezeBottom - 2.1;
+  const outerMargin = Math.max(1.25, config.mantelWidth * 0.035);
+  const pilasterWidth = Math.min(7.5, Math.max(5.25, config.mantelWidth * 0.105));
+  const sideFieldWidth = Math.max(
+    0.3,
+    (config.mantelWidth - config.fireplaceOpeningWidth) / 2 - pilasterWidth - outerMargin,
+  );
+  const pilasterCenterX = config.mantelWidth / 2 - outerMargin - pilasterWidth / 2;
+  const pilasterBottom = 0.75;
+  const friezeBottom = Math.max(openingTop + 6.5, config.mantelHeight - 11.5);
+  const shaftBottom = 6.5;
+  const shaftTop = friezeBottom - 2;
   const shaftHeight = Math.max(12, shaftTop - shaftBottom);
-  const pilasterDepth = config.mantelDepth * 0.57;
+  const pilasterDepth = config.mantelDepth * 0.5;
+  const friezeHeight = Math.max(3, shelfTopY - friezeBottom - 2.65);
+  const friezeCenterY = friezeBottom + friezeHeight / 2;
+  const friezeReliefHeight = Math.max(1.6, friezeHeight - 1.75);
+  const sideRosetteRadius = Math.min(1.2, friezeReliefHeight * 0.38);
 
-  // Inner stone/tile surround trim.
-  const innerTrim = 2.45;
-  const trimDepth = 1.15;
-  const trimZ = config.mantelDepth * 0.28;
-  const centerY = openingBottom + config.fireplaceOpeningHeight / 2;
+  // Broad painted surround field from the reference elevation. The thin black
+  // electric-insert reveal sits behind this plane instead of covering it.
+  const surroundDepth = Math.min(1, config.mantelDepth * 0.12);
+  const surroundZ = 0.7;
+  const legHeight = friezeBottom - openingBottom;
+  const legCenterY = openingBottom + legHeight / 2;
+  const headerHeight = Math.max(0.5, friezeBottom - openingTop);
   group.add(
     createBox({
-      name: 'Fireplace left inner surround',
-      category: 'Mantel surround',
-      width: innerTrim,
-      height: config.fireplaceOpeningHeight + innerTrim * 2,
-      depth: trimDepth,
-      x: -config.fireplaceOpeningWidth / 2 - innerTrim / 2,
-      y: centerY,
-      z: trimZ,
-      material: materials.stone,
-      radius: 0.06,
-      materialLabel: 'Honed stone surround',
+      name: 'Fireplace left painted surround field',
+      category: 'Painted mantel surround',
+      width: sideFieldWidth,
+      height: legHeight,
+      depth: surroundDepth,
+      x: -config.fireplaceOpeningWidth / 2 - sideFieldWidth / 2,
+      y: legCenterY,
+      z: surroundZ,
+      material: materials.cabinet,
+      radius: 0.025,
+      materialLabel: 'Paint-grade mantel surround',
     }),
     createBox({
-      name: 'Fireplace right inner surround',
-      category: 'Mantel surround',
-      width: innerTrim,
-      height: config.fireplaceOpeningHeight + innerTrim * 2,
-      depth: trimDepth,
-      x: config.fireplaceOpeningWidth / 2 + innerTrim / 2,
-      y: centerY,
-      z: trimZ,
-      material: materials.stone,
-      radius: 0.06,
-      materialLabel: 'Honed stone surround',
+      name: 'Fireplace right painted surround field',
+      category: 'Painted mantel surround',
+      width: sideFieldWidth,
+      height: legHeight,
+      depth: surroundDepth,
+      x: config.fireplaceOpeningWidth / 2 + sideFieldWidth / 2,
+      y: legCenterY,
+      z: surroundZ,
+      material: materials.cabinet,
+      radius: 0.025,
+      materialLabel: 'Paint-grade mantel surround',
     }),
     createBox({
-      name: 'Fireplace top inner surround',
-      category: 'Mantel surround',
+      name: 'Fireplace painted lintel field',
+      category: 'Painted mantel surround',
       width: config.fireplaceOpeningWidth,
-      height: innerTrim,
-      depth: trimDepth,
-      y: openingTop + innerTrim / 2,
-      z: trimZ,
-      material: materials.stone,
-      radius: 0.06,
-      materialLabel: 'Honed stone surround',
+      height: headerHeight,
+      depth: surroundDepth,
+      y: openingTop + headerHeight / 2,
+      z: surroundZ,
+      material: materials.cabinet,
+      radius: 0.025,
+      materialLabel: 'Paint-grade mantel surround',
     }),
   );
 
@@ -328,63 +335,64 @@ function buildMantel(
       }),
     );
 
-    // Five vertical flutes and leaf/bead details approximate the carved column shown in the reference.
-    const fluteCount = 5;
-    const fluteSpacing = pilasterWidth / (fluteCount + 1);
-    for (let flute = 0; flute < fluteCount; flute += 1) {
-      const fluteX = x - pilasterWidth / 2 + fluteSpacing * (flute + 1);
-      const fluteMesh = createCylinderPart({
-        name: `Mantel ${sideName} pilaster flute ${flute + 1}`,
-        category: 'Mantel carved detail',
-        radius: 0.22,
-        height: shaftHeight - 3.0,
-        material: materials.cabinetEdge,
-        x: fluteX,
-        y: shaftBottom + shaftHeight / 2,
-        z: pilasterDepth + 0.12,
-        radialSegments: 18,
-        materialLabel: 'Paint-grade carved detail',
-        pickable: false,
-      });
-      group.add(fluteMesh);
-    }
+    const panelHeight = Math.max(6, shaftHeight - 2.2);
+    const pilasterPanel = createBox({
+      name: `Mantel ${sideName} framed relief panel`,
+      category: 'Mantel carved detail',
+      width: Math.max(2.2, pilasterWidth - 1.35),
+      height: panelHeight,
+      depth: 0.22,
+      x,
+      y: shaftBottom + shaftHeight / 2,
+      z: pilasterDepth + 0.08,
+      material: materials.cabinetShadow,
+      radius: 0.035,
+      materialLabel: 'Paint-grade recessed relief panel',
+      pickable: false,
+    });
+    addEdgeHighlight(pilasterPanel, 0x625c54, 0.38);
+    group.add(pilasterPanel);
 
-    for (let bead = 0; bead < 7; bead += 1) {
-      const beadY = shaftBottom + 1.2 + bead * ((shaftHeight - 2.4) / 6);
-      const beadGeometry = new THREE.SphereGeometry(0.52, 18, 12);
-      const beadMesh = new THREE.Mesh(beadGeometry, materials.cabinetEdge);
-      beadMesh.name = `Mantel ${sideName} carved leaf bead ${bead + 1}`;
-      beadMesh.position.set(x, beadY, pilasterDepth + 0.42);
-      beadMesh.scale.set(0.82, 1.25, 0.52);
-      beadMesh.castShadow = true;
-      beadMesh.userData.pickable = false;
-      group.add(beadMesh);
+    const motifCount = Math.min(10, Math.max(6, Math.floor(panelHeight / 2.2)));
+    for (let motifIndex = 0; motifIndex < motifCount; motifIndex += 1) {
+      const motifGeometry = new THREE.TorusGeometry(0.4, 0.105, 8, 20);
+      const motif = new THREE.Mesh(motifGeometry, materials.cabinetEdge);
+      motif.name = `Mantel ${sideName} oval relief ${motifIndex + 1}`;
+      motif.position.set(
+        x,
+        shaftBottom + 1.25 + motifIndex * ((shaftHeight - 2.5) / Math.max(1, motifCount - 1)),
+        pilasterDepth + 0.25,
+      );
+      motif.scale.y = 1.28;
+      motif.castShadow = true;
+      motif.userData.pickable = false;
+      group.add(motif);
     }
 
     const rosette = createRosette({
       name: `Mantel ${sideName} capital rosette`,
-      radius: 1.2,
+      radius: sideRosetteRadius,
       depth: 0.66,
       x,
-      y: friezeBottom + 3.05,
-      z: mantelFaceZ + 0.84,
+      y: friezeCenterY,
+      z: mantelFaceZ + 0.08,
       material: materials.cabinetEdge,
       petals: 12,
     });
     group.add(rosette);
   }
 
-  const friezeHeight = shelfTopY - friezeBottom - 2.65;
-  const friezeWidth = config.mantelWidth - 8.2;
+  const friezeWidth = config.mantelWidth - outerMargin * 2;
+  const friezeDepth = config.mantelDepth * 0.58;
   group.add(
     createBox({
       name: 'Mantel frieze field',
       category: 'Mantel frieze',
       width: friezeWidth,
       height: friezeHeight,
-      depth: config.mantelDepth * 0.58,
-      y: friezeBottom + friezeHeight / 2,
-      z: config.mantelDepth * 0.29,
+      depth: friezeDepth,
+      y: friezeCenterY,
+      z: friezeDepth / 2,
       material: materials.cabinet,
       radius: 0.06,
       materialLabel: 'Paint-grade carved mantel',
@@ -392,7 +400,7 @@ function buildMantel(
     createBox({
       name: 'Mantel frieze lower rail',
       category: 'Mantel frieze',
-      width: friezeWidth + 1.1,
+      width: friezeWidth,
       height: 1.15,
       depth: config.mantelDepth * 0.69,
       y: friezeBottom + 0.575,
@@ -403,63 +411,98 @@ function buildMantel(
     }),
   );
 
-  // Dentil band beneath the shelf.
-  const dentilY = shelfTopY - 4.0;
-  const dentilCount = Math.max(8, Math.floor((config.mantelWidth - 10) / 3.1));
-  const dentilSpan = config.mantelWidth - 10;
-  const dentilSpacing = dentilSpan / dentilCount;
-  for (let i = 0; i < dentilCount; i += 1) {
-    group.add(
-      createBox({
-        name: `Mantel dentil ${i + 1}`,
-        category: 'Mantel dentil band',
-        width: 1.2,
-        height: 1.0,
-        depth: 1.2,
-        x: -dentilSpan / 2 + dentilSpacing * (i + 0.5),
-        y: dentilY,
-        z: mantelFaceZ + 0.85,
-        material: materials.cabinetEdge,
-        radius: 0.035,
-        materialLabel: 'Paint-grade carved detail',
-        pickable: false,
-      }),
-    );
+  const panelHeight = friezeReliefHeight;
+  const centerPanelWidth = Math.max(7, friezeWidth * 0.18);
+  const rosetteZoneWidth = pilasterWidth + 0.6;
+  const sidePanelWidth = Math.max(
+    4,
+    (friezeWidth - centerPanelWidth - rosetteZoneWidth * 2) / 2,
+  );
+  const reliefZ = friezeDepth + 0.13;
+  for (const direction of [-1, 1] as const) {
+    const panelX = direction * (centerPanelWidth / 2 + sidePanelWidth / 2);
+    const medallionPanel = createBox({
+      name: `Mantel ${direction < 0 ? 'left' : 'right'} six-medallion frieze panel`,
+      category: 'Mantel carved detail',
+      width: sidePanelWidth,
+      height: panelHeight,
+      depth: 0.22,
+      x: panelX,
+      y: friezeCenterY,
+      z: reliefZ,
+      material: materials.cabinetShadow,
+      radius: 0.03,
+      materialLabel: 'Paint-grade recessed relief panel',
+      pickable: false,
+    });
+    addEdgeHighlight(medallionPanel, 0x625c54, 0.38);
+    group.add(medallionPanel);
+    for (let medallionIndex = 0; medallionIndex < 6; medallionIndex += 1) {
+      const medallionGeometry = new THREE.TorusGeometry(0.37, 0.1, 8, 18);
+      const medallion = new THREE.Mesh(medallionGeometry, materials.cabinetEdge);
+      medallion.name = `Mantel ${direction < 0 ? 'left' : 'right'} frieze medallion ${medallionIndex + 1}`;
+      medallion.position.set(
+        panelX - sidePanelWidth / 2 + sidePanelWidth * ((medallionIndex + 0.5) / 6),
+        friezeCenterY,
+        reliefZ + 0.23,
+      );
+      medallion.castShadow = true;
+      medallion.userData.pickable = false;
+      group.add(medallion);
+    }
   }
 
-  // Center sunburst and smaller bead ornaments across the frieze.
+  const centerPanel = createBox({
+    name: 'Mantel framed center wave panel',
+    category: 'Mantel carved detail',
+    width: centerPanelWidth,
+    height: panelHeight,
+    depth: 0.22,
+    y: friezeCenterY,
+    z: reliefZ,
+    material: materials.cabinetShadow,
+    radius: 0.03,
+    materialLabel: 'Paint-grade recessed relief panel',
+    pickable: false,
+  });
+  addEdgeHighlight(centerPanel, 0x625c54, 0.38);
+  group.add(centerPanel);
+  for (let ribIndex = 0; ribIndex < 9; ribIndex += 1) {
+    const baseX = -centerPanelWidth / 2 + centerPanelWidth * ((ribIndex + 1) / 10);
+    const ribHeight = Math.max(0.8, panelHeight - 0.55);
+    const points: THREE.Vector3[] = [];
+    for (let pointIndex = 0; pointIndex <= 12; pointIndex += 1) {
+      const progress = pointIndex / 12;
+      points.push(
+        new THREE.Vector3(
+          baseX + Math.sin(progress * Math.PI * 2.4 + ribIndex * 0.42) * 0.14,
+          friezeCenterY - ribHeight / 2 + progress * ribHeight,
+          reliefZ + 0.3,
+        ),
+      );
+    }
+    const curve = new THREE.CatmullRomCurve3(points);
+    const rib = new THREE.Mesh(
+      new THREE.TubeGeometry(curve, 22, 0.075, 6, false),
+      materials.cabinetEdge,
+    );
+    rib.name = `Mantel center wave rib ${ribIndex + 1}`;
+    rib.castShadow = true;
+    rib.userData.pickable = false;
+    group.add(rib);
+  }
+
   const centerRosette = createRosette({
     name: 'Mantel center sunburst',
-    radius: 1.42,
+    radius: Math.min(1.42, panelHeight * 0.4),
     depth: 0.72,
     x: 0,
-    y: friezeBottom + friezeHeight * 0.53,
-    z: mantelFaceZ + 0.88,
+    y: friezeCenterY,
+    z: reliefZ + 0.34,
     material: materials.cabinetEdge,
     petals: 16,
   });
   group.add(centerRosette);
-
-  for (const direction of [-1, 1] as const) {
-    const beadStart = direction * 4.3;
-    for (let i = 0; i < 6; i += 1) {
-      const bead = createCylinderPart({
-        name: `Mantel frieze bead ${direction < 0 ? 'left' : 'right'} ${i + 1}`,
-        category: 'Mantel carved detail',
-        radius: 0.4,
-        height: 0.48,
-        material: materials.cabinetEdge,
-        x: beadStart + direction * i * 1.18,
-        y: friezeBottom + friezeHeight * 0.52,
-        z: mantelFaceZ + 0.82,
-        rotationX: Math.PI / 2,
-        radialSegments: 18,
-        materialLabel: 'Paint-grade carved detail',
-        pickable: false,
-      });
-      group.add(bead);
-    }
-  }
 
   // Layered mantel shelf and ogee below it.
   const moulding = createLinearMoulding({
@@ -494,9 +537,9 @@ function buildMantel(
     createBox({
       name: 'Mantel shelf top cap',
       category: 'Mantel shelf',
-      width: config.mantelWidth + 1.2,
+      width: config.mantelWidth,
       height: 0.42,
-      depth: config.mantelDepth + 1.2,
+      depth: config.mantelDepth,
       y: shelfTopY - 0.21,
       z: config.mantelDepth / 2,
       material: materials.cabinetEdge,
@@ -530,28 +573,28 @@ function buildHerringboneTile(
     height: openingHeight - 0.45,
     depth: 0.32,
     y: openingBottom + openingHeight / 2,
-    z: 0.82,
-    material: materials.stoneDark,
-    materialLabel: 'Dark refractory backing',
+    z: 0.34,
+    material: materials.tile,
+    materialLabel: 'Light herringbone field',
   });
   group.add(backing);
 
-  const brickLength = 4.4;
-  const brickHeight = 1.08;
-  const brickDepth = 0.23;
+  const brickLength = 2.2;
+  const brickHeight = 0.54;
+  const brickDepth = 0.12;
   const geometry = new THREE.BoxGeometry(brickLength, brickHeight, brickDepth);
   const transformsA: THREE.Matrix4[] = [];
   const transformsB: THREE.Matrix4[] = [];
   const quaternion = new THREE.Quaternion();
   const position = new THREE.Vector3();
   const scale = new THREE.Vector3(1, 1, 1);
-  const margin = 1.0;
+  const margin = 0.55;
   const minX = -openingWidth / 2 + margin;
   const maxX = openingWidth / 2 - margin;
   const minY = openingBottom + margin;
   const maxY = openingBottom + openingHeight - margin;
-  const stepX = 3.4;
-  const stepY = 2.55;
+  const stepX = 1.7;
+  const stepY = 1.275;
   let row = 0;
   for (let y = minY; y <= maxY; y += stepY) {
     let column = 0;
@@ -564,7 +607,7 @@ function buildHerringboneTile(
       }
       const angle = (row + column) % 2 === 0 ? Math.PI / 4 : -Math.PI / 4;
       quaternion.setFromAxisAngle(new THREE.Vector3(0, 0, 1), angle);
-      position.set(centerX, y, 1.08);
+      position.set(centerX, y, 0.58);
       const matrix = new THREE.Matrix4().compose(position, quaternion, scale);
       ((row + column) % 3 === 0 ? transformsB : transformsA).push(matrix);
       column += 1;
@@ -608,9 +651,9 @@ function buildAnimatedFire(
     category: 'Electric flame effect',
     width: config.fireplaceOpeningWidth * 0.78,
     height: 1.05,
-    depth: 3.25,
+    depth: 1.1,
     y: openingBottom + 1.18,
-    z: fireboxDepth - 0.8,
+    z: 0.72,
     material: materials.ember,
     radius: 0.42,
     materialLabel: 'LED ember bed',
@@ -618,15 +661,15 @@ function buildAnimatedFire(
   });
   group.add(emberBed);
 
-  const logGeometry = new THREE.CylinderGeometry(0.72, 0.92, config.fireplaceOpeningWidth * 0.38, 12);
+  const logGeometry = new THREE.CylinderGeometry(0.38, 0.5, config.fireplaceOpeningWidth * 0.28, 12);
   logGeometry.rotateZ(Math.PI / 2);
   for (let i = 0; i < 4; i += 1) {
     const log = new THREE.Mesh(logGeometry, materials.log);
     log.name = `Ceramic log ${i + 1}`;
     log.position.set(
       (i - 1.5) * config.fireplaceOpeningWidth * 0.12,
-      openingBottom + 2.2 + (i % 2) * 0.55,
-      fireboxDepth + 0.3 + (i % 2) * 0.55,
+      openingBottom + 1.35 + (i % 2) * 0.36,
+      0.58 + (i % 2) * 0.05,
     );
     log.rotation.y = (i % 2 === 0 ? 1 : -1) * 0.18;
     log.rotation.z = (i % 2 === 0 ? 1 : -1) * 0.12;
@@ -636,26 +679,21 @@ function buildAnimatedFire(
   }
 
   const flameMaterials: THREE.ShaderMaterial[] = [];
-  const flameTongues: Array<{
-    mesh: THREE.Mesh<THREE.ShapeGeometry, THREE.MeshBasicMaterial>;
-    baseX: number;
-    phase: number;
-  }> = [];
   const flameGeometry = new THREE.PlaneGeometry(
-    config.fireplaceOpeningWidth * 0.84,
-    config.fireplaceOpeningHeight * 0.82,
+    config.fireplaceOpeningWidth * 0.64,
+    config.fireplaceOpeningHeight * 0.52,
     1,
     1,
   );
-  for (let layer = 0; layer < 3; layer += 1) {
+  for (let layer = 0; layer < 2; layer += 1) {
     const material = createFlameMaterial(layer);
     flameMaterials.push(material);
     const plane = new THREE.Mesh(flameGeometry, material);
     plane.name = `Procedural flame layer ${layer + 1}`;
     plane.position.set(
       (layer - 1) * 0.28,
-      openingBottom + config.fireplaceOpeningHeight * (0.42 + layer * 0.015),
-      fireboxDepth + 0.7 + layer * 0.12,
+      openingBottom + config.fireplaceOpeningHeight * (0.29 + layer * 0.012),
+      0.84 + layer * 0.025,
     );
     plane.scale.set(1 - layer * 0.08, 1 - layer * 0.04, 1);
     plane.renderOrder = 4 + layer;
@@ -663,41 +701,7 @@ function buildAnimatedFire(
     group.add(plane);
   }
 
-  // Individual translucent tongues keep the electric flame readable even under bright room lighting.
-  const tongueCount = 9;
-  for (let index = 0; index < tongueCount; index += 1) {
-    const phase = index * 1.37;
-    const width = config.fireplaceOpeningWidth * (0.055 + (index % 3) * 0.009);
-    const height = config.fireplaceOpeningHeight * (0.2 + ((index * 7) % 9) * 0.018);
-    const shape = new THREE.Shape();
-    shape.moveTo(-width / 2, 0);
-    shape.bezierCurveTo(-width * 0.55, height * 0.3, -width * 0.2, height * 0.7, 0, height);
-    shape.bezierCurveTo(width * 0.34, height * 0.65, width * 0.56, height * 0.28, width / 2, 0);
-    shape.closePath();
-
-    const geometry = new THREE.ShapeGeometry(shape, 18);
-    const color = index % 3 === 0 ? 0xffe28a : index % 2 === 0 ? 0xffa21a : 0xff4c08;
-    const material = new THREE.MeshBasicMaterial({
-      color,
-      transparent: true,
-      opacity: index % 3 === 0 ? 0.48 : 0.36,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      side: THREE.DoubleSide,
-      toneMapped: false,
-    });
-    material.userData.disposeWithObject = true;
-    const tongue = new THREE.Mesh(geometry, material);
-    const baseX = ((index + 0.5) / tongueCount - 0.5) * config.fireplaceOpeningWidth * 0.72;
-    tongue.name = `Electric flame tongue ${index + 1}`;
-    tongue.position.set(baseX, openingBottom + 1.55, fireboxDepth + 1.48 + (index % 3) * 0.035);
-    tongue.renderOrder = 9 + index;
-    tongue.userData.pickable = false;
-    flameTongues.push({ mesh: tongue, baseX, phase });
-    group.add(tongue);
-  }
-
-  const light = new THREE.PointLight(0xff5c20, 110, 70, 1.75);
+  const light = new THREE.PointLight(0xff5c20, 62, 70, 1.75);
   light.name = 'Fireplace flicker light';
   light.position.set(0, openingBottom + config.fireplaceOpeningHeight * 0.46, fireboxDepth + 5);
   light.castShadow = false;
@@ -709,12 +713,7 @@ function buildAnimatedFire(
       flameMaterials.forEach((material, index) => {
         material.uniforms.uTime.value = timeSeconds * (0.9 + index * 0.12);
       });
-      flameTongues.forEach(({ mesh, baseX, phase }, index) => {
-        mesh.position.x = baseX + Math.sin(timeSeconds * (1.8 + index * 0.025) + phase) * 0.2;
-        mesh.scale.x = 0.94 + Math.sin(timeSeconds * 2.35 + phase) * 0.08;
-        mesh.scale.y = 0.88 + Math.sin(timeSeconds * 3.1 + phase * 0.72) * 0.12;
-      });
-      light.intensity = 98 + Math.sin(timeSeconds * 7.3) * 9 + Math.sin(timeSeconds * 12.7) * 6;
+      light.intensity = 56 + Math.sin(timeSeconds * 7.3) * 6 + Math.sin(timeSeconds * 12.7) * 4;
       emberBed.scale.x = 1 + Math.sin(timeSeconds * 4.2) * 0.008;
     },
   };
@@ -781,10 +780,10 @@ function createFlameMaterial(layer: number): THREE.ShaderMaterial {
         float hot = smoothstep(0.46, 0.96, tongues + (1.0 - y) * 0.38);
         vec3 orange = vec3(1.0, 0.18, 0.015);
         vec3 amber = vec3(1.0, 0.56, 0.05);
-        vec3 pale = vec3(1.0, 0.92, 0.52);
+        vec3 pale = vec3(1.0, 0.46, 0.08);
         vec3 color = mix(orange, amber, hot);
         color = mix(color, pale, pow(hot, 3.0) * (1.0 - y));
-        gl_FragColor = vec4(color, alpha);
+        gl_FragColor = vec4(color * 0.76, alpha * 0.2);
       }
     `,
     transparent: true,
