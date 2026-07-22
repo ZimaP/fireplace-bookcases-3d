@@ -49,6 +49,8 @@ button {
 }
 
 .app-shell {
+  position: fixed;
+  inset: 0;
   display: grid;
   grid-template-columns: 334px minmax(0, 1fr);
   grid-template-rows: 72px minmax(0, 1fr);

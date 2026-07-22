@@ -173,7 +173,7 @@ export function createAppUi(
         numberField('roomWidth', 'Room width', 150, 360, 0.25),
         numberField('roomDepth', 'Room depth', 96, 300, 0.25),
         numberField('roomHeight', 'Ceiling height', 84, 168, 0.25),
-        numberField('chimneyWidth', 'Chimney width', 40, 96, 0.25),
+        numberField('chimneyWidth', 'Chimney width', 42, 96, 0.25),
         numberField('chimneyDepth', 'Chimney projection', 3, 24, 0.25),
       ],
     },
@@ -517,5 +517,20 @@ function escapeHtml(value: string): string {
 }
 
 export async function copyShareUrl(config: ModelConfig): Promise<void> {
-  await navigator.clipboard.writeText(configToUrl(config));
+  const shareUrl = configToUrl(config);
+  try {
+    await navigator.clipboard.writeText(shareUrl);
+    return;
+  } catch {
+    const field = document.createElement('textarea');
+    field.value = shareUrl;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.opacity = '0';
+    document.body.appendChild(field);
+    field.select();
+    const copied = document.execCommand('copy');
+    field.remove();
+    if (!copied) throw new Error('Clipboard access is unavailable.');
+  }
 }

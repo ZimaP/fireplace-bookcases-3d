@@ -15,21 +15,20 @@ This repository contains only the fireplace-bookcase room study. It does not inh
 
 Each left/right assembly contains:
 
-1. **Finished side fillers** at the outer edges. The drawing establishes a 3/4-inch minimum; the study defaults to 1-1/2 inches.
+1. **One outboard field-fit filler** per bookcase. Each assembly uses finished base and upper filler faces over a full-height unfinished plywood backer. The drawing establishes a 3/4-inch minimum finished filler width; the study defaults to 1-1/2 inches.
 2. **Base carcass** with 3/4-inch side panels and center divider, 1/4-inch finished back, bottom panel, one shelf per bay, recessed toe-kick panel, and adjustable feet.
 3. **Base face frame** with fixed 1-1/2-inch rails and stiles.
 4. **Four Shaker doors** with 3/4-inch thickness, recessed center panels, consistent reveals, and paired hardware positions.
-5. **1-1/4-inch countertop/transition shelf** with a finished overhang.
-6. **Upper carcass** with two bays, 3/4-inch side panels and divider, 1/4-inch back, 1-1/4-inch fixed lower shelf, and fixed top.
+5. **One 1-1/4-inch fixed countertop/transition shelf** spanning the complete bookcase width with a finished front and side overhang.
+6. **Upper carcass** with two bays, 3/4-inch side panels and divider, 1/4-inch back, and fixed top. The transition shelf forms its fixed lower datum; no second shelf is stacked above it.
 7. **Upper face frame** with three fixed 1-1/2-inch stiles and top/bottom rails.
 8. **Adjustable shelves** snapped to the 2-inch pin grid.
 9. **5 mm shelf-pin rows** at front and rear positions on each bearing side.
-10. **Crown/top filler** with a stepped cap and reveal.
-11. **Unfinished plywood filler backers** behind the finished side fillers.
+10. **Flat field-fit crown/top filler** with a 1-1/2-inch study height, reflecting the drawing's add-or-remove crown allowance rather than an invented moulding profile.
 
 ## Required adjustable-shelf rule
 
-Clear shelf span is derived from finished overall width after fillers, carcass sides, and center construction are deducted. Adjustable shelf thickness must be selected automatically:
+Clear shelf span is derived from finished overall width after the one outboard filler, carcass sides, and center construction are deducted. Adjustable shelf thickness is selected automatically and is not an ordinary user control:
 
 ```text
 clear span <= 27 in  -> 1 in MDF
@@ -43,10 +42,10 @@ Overall room, bookcase, and fireplace dimensions may change. Carcass thickness, 
 ## Fireplace assembly
 
 - Full-height projected chimney breast.
-- Herringbone field behind the surround.
-- Stone surround and projecting hearth slab.
-- Classical mantel with layered shelf/cap, pilasters, fluting, capitals, frieze, and decorative blocks.
-- Metal electric insert with frame, glass, grate, logs, embers, flame elements, and flickering light.
+- Recessed firebox with a light herringbone field.
+- Painted classical surround with a low projecting hearth slab.
+- Layered mantel shelf, paneled pilasters with repeated oval reliefs, and a relief-panel frieze with rosettes, medallions, ribbed center detail, and sunburst.
+- Recessed metal electric insert with frame, glass, grate, logs, embers, restrained flame elements, and flickering light.
 
 ## Room shell
 

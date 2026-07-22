@@ -1,81 +1,77 @@
 # Project status — Fireplace Bookcases 3D
 
-**Last updated:** 2026-07-21
-**Project stage:** Published and deployed v1
-**Branch:** `main`
+**Last updated:** 2026-07-22
+**Project stage:** Reference-aligned v1, locally verified; publication pending
+**Working branch:** `codex/reference-alignment`
 **Target repository:** `ZimaP/fireplace-bookcases-3d`
 **Target public site:** `https://zimap.github.io/fireplace-bookcases-3d/`
 
-## Source and reference confirmation
+## Reference basis
 
-- The standalone transfer was imported without Git metadata or files from any unrelated repository.
-- Primary construction reference confirmed: `reference/bookcase-detail-drawing.png`.
-- Primary room-composition reference confirmed: `reference/room-fireplace-layout.jpg`.
-- Both references also exist under `public/reference/` for the deployed viewer.
+- Primary construction source: `reference/bookcase-detail-drawing.png`.
+- Primary room-composition source: `reference/room-fireplace-layout.jpg`.
+- The supplied drawing controls cabinet construction, shelf stock, elevation rhythm, and mantel vocabulary.
+- The supplied room image controls the U-shaped room, projected chimney breast, and overall placement.
+- No other repository or project was used as a source.
 
-## Verified v1 feature set
+## Verified behavior
 
-- Procedural TypeScript + Three.js room, central chimney/fireplace, and two independently sized bookcases.
-- Two upper bays and four lower Shaker doors per bookcase.
-- Detailed face frames, finished backs, fillers/backers, transition tops, fixed and adjustable shelves, pin rows, toe kicks, levelers, crown, hardware, mantel carving, insert, logs, embers, and animated flame layers.
-- Desktop controls for room, independent left/right bookcase, and fireplace dimensions; finish and visibility controls; fit-to-wall action; camera presets; orbit/pan/zoom; semantic part inspection; URL state; share link; and PNG export.
-- Live per-side clear-span readouts, automatic shelf stock selection, and design warnings.
-- Camera presets frame current geometry and remain stable after resizing; rebuilds dispose transient geometry, materials, CSS labels, and shadow targets.
-
-## Drawing-controlled rules
-
-- Carcass: 3/4 in.
-- Finished back: 1/4 in.
-- Face frames and center divider: 1-1/2 in.
-- Doors: 3/4 in.
-- Fixed transition/lower upper-cabinet shelf: 1-1/4 in.
-- Shelf pins: 5 mm diameter on 2 in vertical centers.
-- Minimum side filler: 3/4 in.
-- Adjustable shelf clear span: 1 in through 27 in; 1-1/4 in over 27 through 31 in; 1-1/2 in over 31 through 36 in; 1-1/2 in plus a support warning over 36 in.
-
-These values are centralized in `src/model/config.ts` and are not ordinary user inputs or URL parameters.
+- Two independently editable bookcases share the same construction formulas.
+- Each bookcase has two upper bays, five default adjustable shelves per bay, four lower Shaker doors, one outboard finished filler over plywood backers, 1-1/2-inch face frames, 1/4-inch finished backs, one 1-1/4-inch transition shelf, lower shelves, toe kick, levelers, pin rows, optional hardware, and a flat field-fit top/crown filler.
+- The fireplace now reads as the drawing's primary painted classical surround: recessed herringbone firebox, narrow inner steel reveal, low hearth, paneled pilasters with repeated reliefs, medallion frieze, wavy center ribs, sunburst, and layered mantel shelf.
+- Adjustable shelf stock is automatic per side: 1 inch through 27 inches, 1-1/4 inches over 27 through 31 inches, 1-1/2 inches over 31 through 36 inches, and retained 1-1/2-inch geometry with a support warning above 36 inches.
+- Configuration clamping prevents side-wall overlap, negative clear bays, duplicate shelf levels, dense unusable shelf openings, mantel/pilaster intrusion into the firebox, and a mantel taller than an inset chimney breast.
+- Camera presets, orbit/pan/zoom, independent dimension inputs, fit-to-wall, URL state, share-link copying with fallback, semantic part inspection, visibility controls, and PNG export remain operational.
+- The fixed desktop shell remains at full viewport height while the controls scroll independently.
 
 ## Verification completed
 
-- Clean dependency install: passed with the public npm registry.
-- Strict TypeScript check: passed.
-- Automated tests: 2 files, 24 assertions passed.
-- Production build: passed.
-- Git whitespace check: passed.
-- Manual browser review at 1440 × 900: perspective, front, plan, left detail, right detail, and fireplace views passed.
-- Parameter review: default; 44 in minimum widths; 108 in maximum widths; 60/79 in asymmetric widths; 79/79 in near-full-wall fit; 140 in bookcase height in a 150 in room; 21/26 in upper/base depths; and over-36-in span warnings passed.
-- Part selection, drag-orbit suppression, URL reload round trip, share-link copy, PNG export, and visibility toggles passed.
-- Review images: `docs/perspective-review.jpg`, `docs/front-elevation-review.jpg`, and `docs/bookcase-detail-review.jpg`.
+- Fresh dependency install: `npm ci` passed.
+- Full verification: `npm run verify` passed.
+- Automated coverage: 3 test files, 49 tests passed.
+- TypeScript project check and production Vite build passed.
+- Production preview rendered at 1440 × 900 with no browser warnings or errors.
+- Manual camera review completed for perspective/room, front, plan, and fireplace views.
+- Manual interaction checks passed for part inspection, copied URL state, PNG export, and fit-to-wall.
+- Parameter checks passed for minimum, default, maximum, near-full-wall, asymmetric 27-inch versus over-36-inch spans, and inset-chimney stress configurations.
+- Review images: `docs/hero-reference-aligned.png` and `docs/front-reference-aligned.png`.
+- `git diff --check` passed.
 
-## Study assumptions
+## Drawing-controlled values
 
-The references do not provide a complete field-verified dimension schedule. Current defaults remain editable visual-study assumptions:
+- 3/4-inch carcass.
+- 1/4-inch finished back.
+- 1-1/2-inch face-frame rails, stiles, and center divider.
+- 3/4-inch doors.
+- 1-1/4-inch fixed transition shelf.
+- 5 mm shelf pins on 2-inch vertical centers.
+- 3/4-inch minimum finished side filler.
 
-- Room: 222 W × 150 D × 108 H in.
-- Each bookcase: 72 W × 104 H in.
-- Base: 31-1/2 H × 22 D in.
-- Upper: 15 D in.
-- Chimney breast: 58 W × 8 projection in.
-- Fireplace opening: 32 W × 24 H in.
-- Mantel: 57 W × 45 H × 11 D in.
-- Hearth: 62 W × 18 D in.
-- Upper fixed top is treated as 3/4-in carcass stock.
-- Lower adjustable shelves use the same per-side MDF span schedule as upper adjustable shelves.
+These values are centralized in `src/model/config.ts` and are not ordinary end-user controls or URL parameters.
 
-Do not present these overall defaults as fabrication dimensions until verified field measurements are supplied.
+## Remaining dimensional assumptions
 
-## Remaining notes and next task
+The references do not provide a complete overall or field-verified dimension schedule. Current defaults are visual-study assumptions, not fabrication dimensions:
 
-- Vite reports a non-blocking advisory for the single Three.js bundle being larger than 500 kB.
-- Any clear shelf span above 36 in intentionally remains visible with a support/design warning and requires a verified support solution.
-- The interface is intentionally desktop-only.
-- Next recommended task: replace study assumptions with verified field dimensions when the owner provides them.
+- Room: 222 W × 150 D × 108 H inches.
+- Each bookcase: 72 W × 104 H inches.
+- Base: 31-1/2 H × 22 D inches; upper: 15 D inches.
+- Chimney breast: 58 W × 8 projection inches.
+- Fireplace opening: 32 W × 24 H inches.
+- Mantel: 57 W × 45 H × 11 D inches.
+- Hearth: 59 W × 12 projection inches, with a 3/4-inch modeled slab height.
+- The upper fixed top is treated as 3/4-inch carcass stock.
+- Lower adjustable shelves use the same per-side MDF span schedule as upper shelves.
+- The finished filler is modeled as a 1-inch face over a 3/4-inch plywood backer, based on the drawing detail.
 
-## Repository and deployment
+## Remaining issues and next task
 
-- Verified implementation commit: `e96ee7b77be373ac5087a853f13e0762676f205e`.
-- Public repository: `https://github.com/ZimaP/fireplace-bookcases-3d`.
-- GitHub Pages source: GitHub Actions.
-- Deployment workflow: run `29881491120`, attempt 2, completed successfully.
-- Verified public site: `https://zimap.github.io/fireplace-bookcases-3d/`.
-- Public verification: HTML, JavaScript, CSS, and reference image returned HTTP 200; the WebGL scene rendered, live resizing/reset worked, and the browser console had no warnings or errors.
+- Any clear shelf span above 36 inches intentionally remains visible with a support warning and still requires an engineered support detail.
+- Vite reports a non-blocking advisory for the single minified Three.js bundle exceeding 500 kB.
+- Fabrication dimensions still require verified field measurements.
+- Next recommended task: replace the overall study assumptions with field measurements, then confirm the above-36-inch shelf support design with the fabricator/engineer.
+
+## Publication state
+
+- The GitHub Pages workflow remains configured to verify and deploy pushes to `main`.
+- This revision must not be reported as deployed until the workflow succeeds and the public WebGL page is opened and visually verified.

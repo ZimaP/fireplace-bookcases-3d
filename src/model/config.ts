@@ -27,6 +27,9 @@ export const SHELF_SPAN_LIMITS = Object.freeze([
   { maximumSpan: 36, thickness: 1.5 },
 ] as const);
 
+/** Presentation guardrail; not a drawing-derived fabrication dimension. */
+export const MINIMUM_SHELF_OPENING = 4;
+
 export interface ModelConfig {
   roomWidth: number;
   roomDepth: number;
@@ -91,24 +94,24 @@ export const DEFAULT_CONFIG: ModelConfig = {
   toeKickRecess: 3,
   centerGap: 1.5,
   sideFiller: 1.5,
-  crownHeight: 3.25,
-  crownProjection: 1.25,
+  crownHeight: 1.5,
+  crownProjection: 0.75,
 
   fireplaceOpeningWidth: 32,
   fireplaceOpeningHeight: 24,
   mantelWidth: 57,
   mantelHeight: 45,
   mantelDepth: 11,
-  hearthWidth: 62,
-  hearthDepth: 18,
+  hearthWidth: 59,
+  hearthDepth: 12,
 
   cabinetFinish: 'warm-white',
   floorFinish: 'natural-oak',
   showRoom: true,
   showCeiling: false,
-  showDimensions: true,
+  showDimensions: false,
   showPinHoles: true,
-  showHardware: true,
+  showHardware: false,
   showFire: true,
   showReferenceGhost: false,
 };
@@ -177,7 +180,7 @@ const ranges: Partial<Record<keyof ModelConfig, [number, number]>> = {
   roomDepth: [96, 300],
   roomHeight: [84, 168],
   wallThickness: [3.5, 8],
-  chimneyWidth: [40, 96],
+  chimneyWidth: [42, 96],
   chimneyDepth: [3, 24],
   chimneyTopInset: [0, 36],
   leftBookcaseWidth: [44, 108],
@@ -213,12 +216,83 @@ export function clampConfig(input: ModelConfig): ModelConfig {
   }
 
   output.bookcaseHeight = Math.min(output.bookcaseHeight, output.roomHeight - 0.5);
-  output.chimneyWidth = Math.min(output.chimneyWidth, output.roomWidth - 36);
+
+  // Keep the full parametric assembly inside the supplied room shell. The
+  // overall inputs may change, but a narrower room may not silently force the
+  // independently sized cases through the side walls or into the chimney.
+  const minimumBookcaseWidth = ranges.leftBookcaseWidth?.[0] ?? 44;
+  const minimumChimneyWidth = ranges.chimneyWidth?.[0] ?? 40;
+  const maximumChimneyWidth = Math.max(
+    minimumChimneyWidth,
+    output.roomWidth - 2 * (minimumBookcaseWidth + output.centerGap),
+  );
+  output.chimneyWidth = Math.min(output.chimneyWidth, maximumChimneyWidth);
+  const maximumBookcaseWidth = Math.max(
+    minimumBookcaseWidth,
+    (output.roomWidth - output.chimneyWidth) / 2 - output.centerGap,
+  );
+  output.leftBookcaseWidth = Math.min(output.leftBookcaseWidth, maximumBookcaseWidth);
+  output.rightBookcaseWidth = Math.min(output.rightBookcaseWidth, maximumBookcaseWidth);
+
   output.baseDepth = Math.max(output.baseDepth, output.upperDepth + 1);
   output.baseHeight = Math.min(output.baseHeight, output.bookcaseHeight - 30);
+  output.fireplaceOpeningWidth = Math.min(
+    output.fireplaceOpeningWidth,
+    Math.max(24, output.chimneyWidth - 14),
+  );
   output.mantelWidth = Math.max(output.mantelWidth, output.fireplaceOpeningWidth + 14);
-  output.mantelHeight = Math.max(output.mantelHeight, output.fireplaceOpeningHeight + 12);
-  output.hearthWidth = Math.max(output.hearthWidth, output.mantelWidth + 2);
+  output.mantelWidth = Math.min(output.mantelWidth, output.chimneyWidth);
+  const mantelOuterMargin = Math.max(1.25, output.mantelWidth * 0.035);
+  const mantelPilasterWidth = Math.min(7.5, Math.max(5.25, output.mantelWidth * 0.105));
+  const maximumOpeningInsidePilasters = Math.max(
+    24,
+    output.mantelWidth - 2 * (mantelOuterMargin + mantelPilasterWidth + 0.85),
+  );
+  output.fireplaceOpeningWidth = Math.min(
+    output.fireplaceOpeningWidth,
+    maximumOpeningInsidePilasters,
+  );
+  const chimneyFaceHeight = Math.max(34, output.roomHeight - output.chimneyTopInset);
+  output.fireplaceOpeningHeight = Math.min(
+    output.fireplaceOpeningHeight,
+    Math.max(18, chimneyFaceHeight - 14),
+  );
+  output.mantelHeight = Math.max(output.mantelHeight, output.fireplaceOpeningHeight + 14);
+  output.mantelHeight = Math.min(output.mantelHeight, chimneyFaceHeight);
+  output.hearthWidth = Math.max(output.hearthWidth, output.mantelWidth);
+  output.hearthWidth = Math.min(output.hearthWidth, output.chimneyWidth + 2);
+
+  const leftBayWidth = (
+    output.leftBookcaseWidth -
+    output.sideFiller -
+    2 * CONSTRUCTION.carcassThickness -
+    CONSTRUCTION.centerDividerWidth
+  ) / 2;
+  const rightBayWidth = (
+    output.rightBookcaseWidth -
+    output.sideFiller -
+    2 * CONSTRUCTION.carcassThickness -
+    CONSTRUCTION.centerDividerWidth
+  ) / 2;
+  const maximumShelfThickness = Math.max(
+    selectAdjustableShelfRule(leftBayWidth).thickness,
+    selectAdjustableShelfRule(rightBayWidth).thickness,
+  );
+  const usableUpperHeight = Math.max(
+    0,
+    output.bookcaseHeight -
+      (output.baseHeight + CONSTRUCTION.fixedTransitionShelfThickness) -
+      output.crownHeight -
+      CONSTRUCTION.faceFrameWidth,
+  );
+  const maximumShelfCount = Math.max(
+    2,
+    Math.floor(
+      (usableUpperHeight - MINIMUM_SHELF_OPENING) /
+      (maximumShelfThickness + MINIMUM_SHELF_OPENING),
+    ),
+  );
+  output.shelfCount = Math.min(output.shelfCount, maximumShelfCount);
   return output;
 }
 
@@ -241,7 +315,7 @@ export function deriveLayout(config: ModelConfig): DerivedLayout {
     1,
     (
       config.leftBookcaseWidth -
-      2 * config.sideFiller -
+      config.sideFiller -
       2 * CONSTRUCTION.carcassThickness -
       CONSTRUCTION.centerDividerWidth
     ) / 2,
@@ -250,7 +324,7 @@ export function deriveLayout(config: ModelConfig): DerivedLayout {
     1,
     (
       config.rightBookcaseWidth -
-      2 * config.sideFiller -
+      config.sideFiller -
       2 * CONSTRUCTION.carcassThickness -
       CONSTRUCTION.centerDividerWidth
     ) / 2,
@@ -281,10 +355,6 @@ export function deriveLayout(config: ModelConfig): DerivedLayout {
   if (config.bookcaseHeight + 0.01 < config.roomHeight - 6) {
     structuralWarnings.push('A larger-than-typical top filler remains above the crown.');
   }
-  if (config.mantelWidth > config.chimneyWidth + 4) {
-    structuralWarnings.push('Mantel is wider than the chimney breast; verify field condition.');
-  }
-
   return {
     leftBookcaseX,
     rightBookcaseX,

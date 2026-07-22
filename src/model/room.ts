@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { ModelConfig } from './config';
+import { deriveLayout } from './config';
 import type { MaterialLibrary } from './materials';
 import { addEdgeHighlight, createBox, setPartMetadata } from './primitives';
 
@@ -159,17 +160,29 @@ function buildBaseboards(
 ): void {
   const baseboardHeight = 4.25;
   const baseboardDepth = 0.62;
-  const backLeftWidth = (config.roomWidth - config.chimneyWidth) / 2;
   const backY = baseboardHeight / 2;
-  for (const direction of [-1, 1] as const) {
+  const layout = deriveLayout(config);
+  const leftOuter = layout.leftBookcaseX - config.leftBookcaseWidth / 2;
+  const leftInner = layout.leftBookcaseX + config.leftBookcaseWidth / 2;
+  const rightInner = layout.rightBookcaseX - config.rightBookcaseWidth / 2;
+  const rightOuter = layout.rightBookcaseX + config.rightBookcaseWidth / 2;
+  const exposedBackWallSegments = [
+    { name: 'Left outer', start: -config.roomWidth / 2, end: leftOuter },
+    { name: 'Left chimney gap', start: leftInner, end: -config.chimneyWidth / 2 },
+    { name: 'Right chimney gap', start: config.chimneyWidth / 2, end: rightInner },
+    { name: 'Right outer', start: rightOuter, end: config.roomWidth / 2 },
+  ];
+  for (const segment of exposedBackWallSegments) {
+    const width = segment.end - segment.start;
+    if (width <= 0.08) continue;
     group.add(
       createBox({
-        name: `${direction < 0 ? 'Left' : 'Right'} back-wall baseboard`,
+        name: `${segment.name} back-wall baseboard`,
         category: 'Room trim',
-        width: backLeftWidth,
+        width,
         height: baseboardHeight,
         depth: baseboardDepth,
-        x: direction * (config.chimneyWidth / 2 + backLeftWidth / 2),
+        x: segment.start + width / 2,
         y: backY,
         z: baseboardDepth / 2 + 0.02,
         material: materials.floorTrim,
@@ -179,6 +192,8 @@ function buildBaseboards(
     );
   }
 
+  const sideBaseboardStart = config.baseDepth + 0.25;
+  const sideBaseboardDepth = Math.max(0.1, config.roomDepth - sideBaseboardStart);
   for (const direction of [-1, 1] as const) {
     group.add(
       createBox({
@@ -186,10 +201,10 @@ function buildBaseboards(
         category: 'Room trim',
         width: baseboardDepth,
         height: baseboardHeight,
-        depth: config.roomDepth,
+        depth: sideBaseboardDepth,
         x: direction * (config.roomWidth / 2 - baseboardDepth / 2),
         y: backY,
-        z: config.roomDepth / 2,
+        z: sideBaseboardStart + sideBaseboardDepth / 2,
         material: materials.floorTrim,
         radius: 0.045,
         materialLabel: 'Paint-grade baseboard',

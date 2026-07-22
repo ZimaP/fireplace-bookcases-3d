@@ -5,6 +5,7 @@ import {
   DEFAULT_CONFIG,
   deriveLayout,
   formatInches,
+  MINIMUM_SHELF_OPENING,
   selectAdjustableShelfRule,
   snapToShelfPinGrid,
   type ModelConfig,
@@ -48,15 +49,36 @@ describe('automatic adjustable shelf stock', () => {
     expect(selectAdjustableShelfRule(span)).toEqual({ thickness, supportRequired });
   });
 
+  it.each([
+    [58.5, 27, 1, false],
+    [58.625, 27.0625, 1.25, false],
+    [66.5, 31, 1.25, false],
+    [66.625, 31.0625, 1.5, false],
+    [76.5, 36, 1.5, false],
+    [76.625, 36.0625, 1.5, true],
+  ] as const)(
+    'derives the shelf rule at a %s inch one-filler bookcase width',
+    (width, span, thickness, supportRequired) => {
+      const layout = deriveLayout({ ...DEFAULT_CONFIG, leftBookcaseWidth: width });
+
+      expect(layout.leftBayWidth).toBe(span);
+      expect(layout.leftAdjustableShelfThickness).toBe(thickness);
+      expect(layout.leftShelfSupportRequired).toBe(supportRequired);
+      expect(
+        layout.structuralWarnings.some((warning) => warning.startsWith('Left bookcase clear')),
+      ).toBe(supportRequired);
+    },
+  );
+
   it('derives left and right stock independently for asymmetric widths', () => {
     const layout = deriveLayout({
       ...DEFAULT_CONFIG,
-      leftBookcaseWidth: 60,
-      rightBookcaseWidth: 79,
+      leftBookcaseWidth: 58.5,
+      rightBookcaseWidth: 76.625,
     });
 
     expect(layout.leftBayWidth).toBe(27);
-    expect(layout.rightBayWidth).toBe(36.5);
+    expect(layout.rightBayWidth).toBe(36.0625);
     expect(layout.leftAdjustableShelfThickness).toBe(1);
     expect(layout.rightAdjustableShelfThickness).toBe(1.5);
     expect(layout.leftShelfSupportRequired).toBe(false);
@@ -67,8 +89,16 @@ describe('automatic adjustable shelf stock', () => {
 
   it('deducts fillers, carcass sides, and center divider from clear span', () => {
     const layout = deriveLayout(DEFAULT_CONFIG);
-    expect(layout.leftBayWidth).toBe(33);
-    expect(layout.rightBayWidth).toBe(33);
+    const expectedBayWidth = (
+      DEFAULT_CONFIG.leftBookcaseWidth -
+      DEFAULT_CONFIG.sideFiller -
+      2 * CONSTRUCTION.carcassThickness -
+      CONSTRUCTION.centerDividerWidth
+    ) / 2;
+
+    expect(expectedBayWidth).toBe(33.75);
+    expect(layout.leftBayWidth).toBe(expectedBayWidth);
+    expect(layout.rightBayWidth).toBe(expectedBayWidth);
   });
 });
 
@@ -124,6 +154,123 @@ describe('independent parametric layout', () => {
     expect(layout.leftBayWidth).toBeGreaterThan(0);
     expect(layout.rightBayWidth).toBeGreaterThan(0);
     expect(layout.upperClearHeight).toBeGreaterThan(0);
+  });
+
+  it('fits adversarial room inputs without crossing either side wall', () => {
+    const config = clampConfig({
+      ...DEFAULT_CONFIG,
+      roomWidth: 150,
+      chimneyWidth: 96,
+      centerGap: 8,
+      leftBookcaseWidth: 108,
+      rightBookcaseWidth: 108,
+    });
+    const layout = deriveLayout(config);
+
+    expect(config.chimneyWidth).toBe(46);
+    expect(config.leftBookcaseWidth).toBe(44);
+    expect(config.rightBookcaseWidth).toBe(44);
+    expect(layout.leftSideClearance).toBe(0);
+    expect(layout.rightSideClearance).toBe(0);
+    expect(layout.structuralWarnings).not.toContain(
+      'The bookcases overlap the side-wall limits. Reduce unit widths or increase room width.',
+    );
+    expect(clampConfig(config)).toEqual(config);
+  });
+
+  it('caps each bookcase independently to its available wall span', () => {
+    const config = clampConfig({
+      ...DEFAULT_CONFIG,
+      leftBookcaseWidth: 108,
+      rightBookcaseWidth: 60,
+    });
+    const layout = deriveLayout(config);
+
+    expect(config.leftBookcaseWidth).toBe(80.5);
+    expect(config.rightBookcaseWidth).toBe(60);
+    expect(layout.leftSideClearance).toBe(0);
+    expect(layout.rightSideClearance).toBe(20.5);
+  });
+});
+
+describe('shelf-density guard', () => {
+  it('reduces shelf count when the requested shelves would create unusable openings', () => {
+    const config = clampConfig({
+      ...DEFAULT_CONFIG,
+      roomHeight: 84,
+      bookcaseHeight: 72,
+      baseHeight: 42,
+      crownHeight: 8,
+      shelfCount: 8,
+    });
+    const layout = deriveLayout(config);
+    const shelfThickness = Math.max(
+      layout.leftAdjustableShelfThickness,
+      layout.rightAdjustableShelfThickness,
+    );
+    const occupiedHeight =
+      config.shelfCount * shelfThickness +
+      (config.shelfCount + 1) * MINIMUM_SHELF_OPENING;
+    const usableHeight =
+      config.bookcaseHeight -
+      (config.baseHeight + CONSTRUCTION.fixedTransitionShelfThickness) -
+      config.crownHeight -
+      CONSTRUCTION.faceFrameWidth;
+
+    expect(config.shelfCount).toBe(2);
+    expect(occupiedHeight).toBeLessThanOrEqual(usableHeight);
+    expect(
+      (config.shelfCount + 1) * shelfThickness +
+      (config.shelfCount + 2) * MINIMUM_SHELF_OPENING,
+    ).toBeGreaterThan(usableHeight);
+  });
+
+  it('retains the requested shelf count when the upper opening is tall enough', () => {
+    const config = clampConfig({
+      ...DEFAULT_CONFIG,
+      roomHeight: 168,
+      bookcaseHeight: 156,
+      baseHeight: 24,
+      crownHeight: 1.5,
+      shelfCount: 8,
+    });
+
+    expect(config.shelfCount).toBe(8);
+  });
+});
+
+describe('fireplace constraint coordination', () => {
+  it('keeps the opening clear of the widest pilaster plinths at minimum width', () => {
+    const config = clampConfig({
+      ...DEFAULT_CONFIG,
+      chimneyWidth: 42,
+      fireplaceOpeningWidth: 60,
+      mantelWidth: 42,
+    });
+    const outerMargin = Math.max(1.25, config.mantelWidth * 0.035);
+    const pilasterWidth = Math.min(7.5, Math.max(5.25, config.mantelWidth * 0.105));
+    const plinthInnerEdge =
+      config.mantelWidth / 2 - outerMargin - pilasterWidth - 1.55 / 2;
+
+    expect(config.fireplaceOpeningWidth / 2).toBeLessThan(plinthInnerEdge);
+    expect(clampConfig(config)).toEqual(config);
+  });
+
+  it('fits the opening and mantel below an inset chimney-breast top', () => {
+    const config = clampConfig({
+      ...DEFAULT_CONFIG,
+      roomHeight: 84,
+      chimneyTopInset: 36,
+      fireplaceOpeningHeight: 42,
+      mantelHeight: 62,
+    });
+    const chimneyFaceHeight = config.roomHeight - config.chimneyTopInset;
+
+    expect(config.fireplaceOpeningHeight).toBe(34);
+    expect(config.mantelHeight).toBe(48);
+    expect(config.mantelHeight).toBeLessThanOrEqual(chimneyFaceHeight);
+    expect(config.mantelHeight - config.fireplaceOpeningHeight).toBeGreaterThanOrEqual(14);
+    expect(clampConfig(config)).toEqual(config);
   });
 });
 
