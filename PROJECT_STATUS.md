@@ -1,7 +1,7 @@
 # Project status — Fireplace Bookcases 3D
 
 **Last updated:** 2026-07-22
-**Project stage:** Reference-aligned v1, locally verified; publication pending
+**Project stage:** Published and publicly verified reference-aligned v1
 **Working branch:** `codex/reference-alignment`
 **Target repository:** `ZimaP/fireplace-bookcases-3d`
 **Target public site:** `https://zimap.github.io/fireplace-bookcases-3d/`
@@ -73,5 +73,8 @@ The references do not provide a complete overall or field-verified dimension sch
 
 ## Publication state
 
-- The GitHub Pages workflow remains configured to verify and deploy pushes to `main`.
-- This revision must not be reported as deployed until the workflow succeeds and the public WebGL page is opened and visually verified.
+- Implementation pull request: `https://github.com/ZimaP/fireplace-bookcases-3d/pull/1`.
+- Published implementation commit on `main`: `5df942748633c02c427461bb001df6a00b1d361f`.
+- GitHub Pages workflow run `29967356936` completed successfully, including clean install, verification, build, artifact upload, and deploy.
+- Public site verified: `https://zimap.github.io/fireplace-bookcases-3d/`.
+- Public verification at 1440 × 900 confirmed the reference-aligned hero and front elevations, the new 59 × 12-inch study hearth defaults, 143 detailed parts, active WebGL rendering, and no browser console warnings or errors.
