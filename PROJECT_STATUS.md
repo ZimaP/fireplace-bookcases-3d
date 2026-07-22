@@ -1,7 +1,7 @@
 # Project status — Fireplace Bookcases 3D
 
 **Last updated:** 2026-07-21
-**Project stage:** Visually verified v1; GitHub publication pending
+**Project stage:** Published and deployed v1
 **Branch:** `main`
 **Target repository:** `ZimaP/fireplace-bookcases-3d`
 **Target public site:** `https://zimap.github.io/fireplace-bookcases-3d/`
@@ -73,6 +73,9 @@ Do not present these overall defaults as fabrication dimensions until verified f
 
 ## Repository and deployment
 
-- Implementation commit: pending initial commit.
-- Repository publication: pending.
-- GitHub Pages deployment: pending.
+- Verified implementation commit: `e96ee7b77be373ac5087a853f13e0762676f205e`.
+- Public repository: `https://github.com/ZimaP/fireplace-bookcases-3d`.
+- GitHub Pages source: GitHub Actions.
+- Deployment workflow: run `29881491120`, attempt 2, completed successfully.
+- Verified public site: `https://zimap.github.io/fireplace-bookcases-3d/`.
+- Public verification: HTML, JavaScript, CSS, and reference image returned HTTP 200; the WebGL scene rendered, live resizing/reset worked, and the browser console had no warnings or errors.

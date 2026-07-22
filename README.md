@@ -64,14 +64,10 @@ npm run preview
 
 ## GitHub Pages
 
-The repository includes `.github/workflows/deploy-pages.yml`. After pushing to the new repository:
+The repository includes `.github/workflows/deploy-pages.yml`; pushes to `main` run the full verification chain before publishing through GitHub Pages.
 
-1. Open **Settings → Pages**.
-2. Choose **GitHub Actions** as the source.
-3. Push to `main` or manually run the deployment workflow.
-
-- Expected repository: [github.com/ZimaP/fireplace-bookcases-3d](https://github.com/ZimaP/fireplace-bookcases-3d) — pending publication verification.
-- Expected live site: [zimap.github.io/fireplace-bookcases-3d](https://zimap.github.io/fireplace-bookcases-3d/) — pending deployment verification.
+- Repository: [github.com/ZimaP/fireplace-bookcases-3d](https://github.com/ZimaP/fireplace-bookcases-3d)
+- Live site: [zimap.github.io/fireplace-bookcases-3d](https://zimap.github.io/fireplace-bookcases-3d/)
 
 ## Source layout
 
