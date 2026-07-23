@@ -10,6 +10,7 @@ import {
   copyConfig,
   DEFAULT_CONFIG,
   fitBookcasesToSelectedOpening,
+  getRoomLayoutOption,
   readConfigFromUrl,
   type ModelConfig,
 } from './model/config';
@@ -85,7 +86,10 @@ const ui = createAppUi(app, config, {
     if (next.roomLayout !== config.roomLayout) {
       rebuildNow(next, true);
       setViewPreset('hero');
-      flashStatus(`${assembly?.derived.layoutLabel ?? 'Room layout'} loaded from its supplied reference.`);
+      const layoutOption = getRoomLayoutOption(next.roomLayout);
+      flashStatus(layoutOption.sourceKind === 'owner-reference'
+        ? `${layoutOption.label} loaded from the supplied room reference.`
+        : `${layoutOption.label} loaded as an editable common-room study.`);
       return;
     }
     scheduleRebuild(next);

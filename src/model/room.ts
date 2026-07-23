@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { DerivedLayout, ModelConfig } from './config';
-import { ROOM_STUDY } from './config';
+import { getRoomLayoutOption, ROOM_STUDY } from './config';
 import type { MaterialLibrary } from './materials';
 import { addEdgeHighlight, createBox, setPartMetadata } from './primitives';
 
@@ -10,6 +10,10 @@ export function buildRoom(
   materials: MaterialLibrary,
 ): THREE.Group {
   const group = new THREE.Group();
+  const layoutOption = getRoomLayoutOption(config.roomLayout);
+  const sourceBasis = layoutOption.sourceKind.includes('reference')
+    ? 'Reconstructed from an owner-supplied room reference'
+    : 'Catalog planning scenario based on a common residential condition';
   group.name = `${derived.layoutLabel} room shell`;
   group.visible = config.showRoom;
   setPartMetadata(group, {
@@ -19,7 +23,7 @@ export function buildRoom(
     height: config.roomHeight,
     depth: config.roomDepth,
     material: 'Painted gypsum walls and wood floor',
-    note: `${derived.layoutLabel} reconstructed from the supplied room image. Overall dimensions are editable study assumptions.`,
+    note: `${sourceBasis}. Overall dimensions are editable study assumptions.`,
   });
 
   const floor = createBox({
@@ -39,8 +43,21 @@ export function buildRoom(
   group.add(floor);
 
   switch (config.roomLayout) {
+    case 'door-wall':
+      buildDoorWall(group, config, materials);
+      break;
+    case 'offset-window-wall':
+    case 'double-window-wall':
     case 'window-wall':
-      buildWindowWall(group, config, materials);
+      buildWindowWall(group, config, materials, getWindowOpeningsForLayout(config));
+      break;
+    case 'media-wall':
+      buildSolidBackWall(group, config, materials);
+      buildMediaFeatureZone(group, config, materials);
+      break;
+    case 'side-nook':
+      buildSolidBackWall(group, config, materials);
+      buildSideNook(group, config, materials);
       break;
     case 'center-niche':
       buildSolidBackWall(group, config, materials);
@@ -224,77 +241,217 @@ function buildCenterNiche(
   }
 }
 
-function buildWindowWall(
+interface BackWallOpening {
+  label: string;
+  centerX: number;
+  width: number;
+  bottomY: number;
+  height: number;
+}
+
+function makeWindowOpening(
+  config: ModelConfig,
+  centerX: number,
+  label: string,
+): BackWallOpening {
+  return {
+    label,
+    centerX,
+    width: config.windowWidth,
+    bottomY: config.windowSillHeight,
+    height: config.windowHeight,
+  };
+}
+
+function makeDoubleWindowOpenings(config: ModelConfig): BackWallOpening[] {
+  const outerWidth = config.windowWidth + 2 * ROOM_STUDY.windowCasingWidth;
+  // The editable gap is clear trim-to-trim space, not raw masonry-opening space.
+  const centerOffset = (outerWidth + config.doubleWindowGap) / 2;
+  return [
+    makeWindowOpening(config, -centerOffset, 'Left window'),
+    makeWindowOpening(config, centerOffset, 'Right window'),
+  ];
+}
+
+function getWindowOpeningsForLayout(config: ModelConfig): BackWallOpening[] {
+  switch (config.roomLayout) {
+    case 'offset-window-wall':
+      return [makeWindowOpening(config, config.windowCenterX, 'Offset window')];
+    case 'double-window-wall':
+      return makeDoubleWindowOpenings(config);
+    case 'window-wall':
+    default:
+      return [makeWindowOpening(config, 0, 'Window')];
+  }
+}
+
+function buildDoorWall(
   group: THREE.Group,
   config: ModelConfig,
   materials: MaterialLibrary,
 ): void {
-  const sideWidth = Math.max(0.1, (config.roomWidth - config.windowWidth) / 2);
-  const windowCenterY = config.windowSillHeight + config.windowHeight / 2;
-  const topHeight = Math.max(0.1, config.roomHeight - config.windowSillHeight - config.windowHeight);
-  const wallParts = [
-    createBox({
-      name: 'Window wall left field',
-      category: 'Room wall',
-      width: sideWidth,
-      height: config.roomHeight,
-      depth: config.wallThickness,
-      x: -(config.windowWidth / 2 + sideWidth / 2),
-      y: config.roomHeight / 2,
-      z: -config.wallThickness / 2,
-      material: materials.wall,
-      castShadow: false,
-      materialLabel: 'Painted gypsum wall',
-    }),
-    createBox({
-      name: 'Window wall right field',
-      category: 'Room wall',
-      width: sideWidth,
-      height: config.roomHeight,
-      depth: config.wallThickness,
-      x: config.windowWidth / 2 + sideWidth / 2,
-      y: config.roomHeight / 2,
-      z: -config.wallThickness / 2,
-      material: materials.wall,
-      castShadow: false,
-      materialLabel: 'Painted gypsum wall',
-    }),
-    createBox({
-      name: 'Window wall below opening',
-      category: 'Room wall',
-      width: config.windowWidth,
-      height: config.windowSillHeight,
-      depth: config.wallThickness,
-      y: config.windowSillHeight / 2,
-      z: -config.wallThickness / 2,
-      material: materials.wall,
-      castShadow: false,
-      materialLabel: 'Painted gypsum wall',
-    }),
-    createBox({
-      name: 'Window wall above opening',
-      category: 'Room wall',
-      width: config.windowWidth,
-      height: topHeight,
-      depth: config.wallThickness,
-      y: config.windowSillHeight + config.windowHeight + topHeight / 2,
-      z: -config.wallThickness / 2,
-      material: materials.wall,
-      castShadow: false,
-      materialLabel: 'Painted gypsum wall',
-    }),
-  ];
-  group.add(...wallParts);
+  const doorway: BackWallOpening = {
+    label: 'Doorway',
+    centerX: config.doorCenterX,
+    width: config.doorWidth,
+    bottomY: 0,
+    height: config.doorHeight,
+  };
+  buildSegmentedBackWall(group, config, materials, [doorway], 'Door wall');
 
-  const casing = ROOM_STUDY.windowCasingWidth;
-  const frameDepth = ROOM_STUDY.windowFrameDepth;
+  const casing = ROOM_STUDY.doorCasingWidth;
+  const trimDepth = ROOM_STUDY.windowFrameDepth;
   group.add(
     createBox({
-      name: 'Window glazing',
+      name: 'Doorway top casing',
+      category: 'Doorway trim',
+      width: config.doorWidth + 2 * casing,
+      height: casing,
+      depth: trimDepth,
+      x: config.doorCenterX,
+      y: config.doorHeight + casing / 2,
+      z: trimDepth / 2 - 0.25,
+      material: materials.floorTrim,
+      radius: 0.04,
+      materialLabel: 'Paint-grade doorway casing',
+      note: 'Simple catalog-study casing around a true floor-level wall opening; no door design is implied.',
+    }),
+  );
+  for (const direction of [-1, 1] as const) {
+    group.add(
+      createBox({
+        name: `${direction < 0 ? 'Left' : 'Right'} doorway casing`,
+        category: 'Doorway trim',
+        width: casing,
+        height: config.doorHeight,
+        depth: trimDepth,
+        x: config.doorCenterX + direction * (config.doorWidth / 2 + casing / 2),
+        y: config.doorHeight / 2,
+        z: trimDepth / 2 - 0.25,
+        material: materials.floorTrim,
+        radius: 0.04,
+        materialLabel: 'Paint-grade doorway casing',
+      }),
+    );
+  }
+}
+
+function buildWindowWall(
+  group: THREE.Group,
+  config: ModelConfig,
+  materials: MaterialLibrary,
+  openings: BackWallOpening[],
+): void {
+  buildSegmentedBackWall(group, config, materials, openings, 'Window wall');
+  for (const opening of openings) buildWindowFeature(group, materials, opening);
+}
+
+function buildSegmentedBackWall(
+  group: THREE.Group,
+  config: ModelConfig,
+  materials: MaterialLibrary,
+  openings: BackWallOpening[],
+  wallLabel: string,
+): void {
+  const roomInterval = { start: -config.roomWidth / 2, end: config.roomWidth / 2 };
+  const normalizedOpenings = openings
+    .map((opening) => {
+      const start = Math.max(roomInterval.start, opening.centerX - opening.width / 2);
+      const end = Math.min(roomInterval.end, opening.centerX + opening.width / 2);
+      const bottomY = Math.max(0, Math.min(opening.bottomY, config.roomHeight));
+      const topY = Math.max(bottomY, Math.min(opening.bottomY + opening.height, config.roomHeight));
+      return {
+        ...opening,
+        centerX: (start + end) / 2,
+        width: Math.max(0, end - start),
+        bottomY,
+        height: Math.max(0, topY - bottomY),
+      };
+    })
+    .filter((opening) => opening.width > 0.08 && opening.height > 0.08)
+    .sort((a, b) => a.centerX - b.centerX);
+
+  const horizontalBlockers = normalizedOpenings.map((opening) => ({
+    start: opening.centerX - opening.width / 2,
+    end: opening.centerX + opening.width / 2,
+  }));
+  const fullHeightFields = subtractIntervals(roomInterval, horizontalBlockers);
+  for (const [index, field] of fullHeightFields.entries()) {
+    const width = field.end - field.start;
+    if (width <= 0.08) continue;
+    group.add(
+      createBox({
+        name: `${wallLabel} full-height field ${index + 1}`,
+        category: 'Room wall',
+        width,
+        height: config.roomHeight,
+        depth: config.wallThickness,
+        x: field.start + width / 2,
+        y: config.roomHeight / 2,
+        z: -config.wallThickness / 2,
+        material: materials.wall,
+        castShadow: false,
+        materialLabel: 'Painted gypsum wall',
+      }),
+    );
+  }
+
+  for (const opening of normalizedOpenings) {
+    if (opening.bottomY > 0.08) {
+      group.add(
+        createBox({
+          name: `${opening.label} wall below opening`,
+          category: 'Room wall',
+          width: opening.width,
+          height: opening.bottomY,
+          depth: config.wallThickness,
+          x: opening.centerX,
+          y: opening.bottomY / 2,
+          z: -config.wallThickness / 2,
+          material: materials.wall,
+          castShadow: false,
+          materialLabel: 'Painted gypsum wall',
+        }),
+      );
+    }
+    const topY = opening.bottomY + opening.height;
+    const aboveHeight = config.roomHeight - topY;
+    if (aboveHeight > 0.08) {
+      group.add(
+        createBox({
+          name: `${opening.label} wall above opening`,
+          category: 'Room wall',
+          width: opening.width,
+          height: aboveHeight,
+          depth: config.wallThickness,
+          x: opening.centerX,
+          y: topY + aboveHeight / 2,
+          z: -config.wallThickness / 2,
+          material: materials.wall,
+          castShadow: false,
+          materialLabel: 'Painted gypsum wall',
+        }),
+      );
+    }
+  }
+}
+
+function buildWindowFeature(
+  group: THREE.Group,
+  materials: MaterialLibrary,
+  opening: BackWallOpening,
+): void {
+  const casing = ROOM_STUDY.windowCasingWidth;
+  const frameDepth = ROOM_STUDY.windowFrameDepth;
+  const windowCenterY = opening.bottomY + opening.height / 2;
+  group.add(
+    createBox({
+      name: `${opening.label} glazing`,
       category: 'Window',
-      width: Math.max(1, config.windowWidth - 2),
-      height: Math.max(1, config.windowHeight - 2),
+      width: Math.max(1, opening.width - 2),
+      height: Math.max(1, opening.height - 2),
       depth: 0.28,
+      x: opening.centerX,
       y: windowCenterY,
       z: -0.22,
       material: materials.windowGlass,
@@ -303,24 +460,26 @@ function buildWindowWall(
       materialLabel: 'Pale architectural glazing',
     }),
     createBox({
-      name: 'Window top casing',
+      name: `${opening.label} top casing`,
       category: 'Window trim',
-      width: config.windowWidth + 2 * casing,
+      width: opening.width + 2 * casing,
       height: casing,
       depth: frameDepth,
-      y: config.windowSillHeight + config.windowHeight + casing / 2,
+      x: opening.centerX,
+      y: opening.bottomY + opening.height + casing / 2,
       z: frameDepth / 2 - 0.25,
       material: materials.floorTrim,
       radius: 0.04,
       materialLabel: 'Paint-grade window casing',
     }),
     createBox({
-      name: 'Window bottom casing',
+      name: `${opening.label} bottom casing`,
       category: 'Window trim',
-      width: config.windowWidth + 2 * casing,
+      width: opening.width + 2 * casing,
       height: casing,
       depth: frameDepth,
-      y: config.windowSillHeight - casing / 2,
+      x: opening.centerX,
+      y: opening.bottomY - casing / 2,
       z: frameDepth / 2 - 0.25,
       material: materials.floorTrim,
       radius: 0.04,
@@ -330,12 +489,12 @@ function buildWindowWall(
   for (const direction of [-1, 1] as const) {
     group.add(
       createBox({
-        name: `${direction < 0 ? 'Left' : 'Right'} window casing`,
+        name: `${opening.label} ${direction < 0 ? 'left' : 'right'} casing`,
         category: 'Window trim',
         width: casing,
-        height: config.windowHeight,
+        height: opening.height,
         depth: frameDepth,
-        x: direction * (config.windowWidth / 2 + casing / 2),
+        x: opening.centerX + direction * (opening.width / 2 + casing / 2),
         y: windowCenterY,
         z: frameDepth / 2 - 0.25,
         material: materials.floorTrim,
@@ -349,12 +508,12 @@ function buildWindowWall(
   for (const fraction of [-0.25, 0, 0.25]) {
     group.add(
       createBox({
-        name: `Window vertical muntin ${fraction}`,
+        name: `${opening.label} vertical muntin ${fraction}`,
         category: 'Window muntin',
         width: muntinWidth,
-        height: config.windowHeight - 2,
+        height: Math.max(1, opening.height - 2),
         depth: 0.72,
-        x: config.windowWidth * fraction,
+        x: opening.centerX + opening.width * fraction,
         y: windowCenterY,
         z: 0.16,
         material: materials.floorTrim,
@@ -366,12 +525,13 @@ function buildWindowWall(
   for (const fraction of [-1 / 6, 1 / 6]) {
     group.add(
       createBox({
-        name: `Window horizontal muntin ${fraction}`,
+        name: `${opening.label} horizontal muntin ${fraction}`,
         category: 'Window muntin',
-        width: config.windowWidth - 2,
+        width: Math.max(1, opening.width - 2),
         height: muntinWidth,
         depth: 0.72,
-        y: windowCenterY + config.windowHeight * fraction,
+        x: opening.centerX,
+        y: windowCenterY + opening.height * fraction,
         z: 0.16,
         material: materials.floorTrim,
         castShadow: false,
@@ -381,18 +541,101 @@ function buildWindowWall(
   }
   group.add(
     createBox({
-      name: 'Window sill',
+      name: `${opening.label} sill`,
       category: 'Window trim',
-      width: config.windowWidth + 2 * casing + 2,
+      width: opening.width + 2 * casing + 2,
       height: 1.4,
       depth: 4,
-      y: config.windowSillHeight - casing - 0.7,
+      x: opening.centerX,
+      y: opening.bottomY - casing - 0.7,
       z: 1.35,
       material: materials.floorTrim,
       radius: 0.05,
       materialLabel: 'Paint-grade window sill',
     }),
   );
+}
+
+function getMediaZoneCenterY(config: ModelConfig): number {
+  const halfHeight = config.mediaZoneHeight / 2;
+  const preferredCenter = config.roomHeight * 0.55;
+  return Math.min(
+    config.roomHeight - halfHeight - 8,
+    Math.max(halfHeight + 18, preferredCenter),
+  );
+}
+
+function buildMediaFeatureZone(
+  group: THREE.Group,
+  config: ModelConfig,
+  materials: MaterialLibrary,
+): void {
+  const feature = createBox({
+    name: 'Flush media feature zone',
+    category: 'Room media feature',
+    width: config.mediaZoneWidth,
+    height: config.mediaZoneHeight,
+    depth: 0.22,
+    y: getMediaZoneCenterY(config),
+    z: 0.1,
+    material: materials.glass,
+    radius: 0.12,
+    castShadow: false,
+    receiveShadow: false,
+    materialLabel: 'Dark flush media surface',
+    note: 'Wall-mounted catalog-study media datum only; this is not a cabinet design option.',
+  });
+  addEdgeHighlight(feature, 0x6f7478, 0.28);
+  group.add(feature);
+}
+
+interface SideNookGeometry {
+  openingSide: -1 | 1;
+  projectionStartX: number;
+  projectionEndX: number;
+  projectionWidth: number;
+  projectionCenterX: number;
+}
+
+function getSideNookGeometry(config: ModelConfig): SideNookGeometry {
+  const openingSide: -1 | 1 = config.placementTarget === 'side-nook-right' ? 1 : -1;
+  const halfRoom = config.roomWidth / 2;
+  const openingWidth = Math.min(config.sideNookWidth, config.roomWidth);
+  const projectionStartX = openingSide < 0 ? -halfRoom + openingWidth : -halfRoom;
+  const projectionEndX = openingSide < 0 ? halfRoom : halfRoom - openingWidth;
+  return {
+    openingSide,
+    projectionStartX,
+    projectionEndX,
+    projectionWidth: Math.max(0, projectionEndX - projectionStartX),
+    projectionCenterX: (projectionStartX + projectionEndX) / 2,
+  };
+}
+
+function buildSideNook(
+  group: THREE.Group,
+  config: ModelConfig,
+  materials: MaterialLibrary,
+): void {
+  const nook = getSideNookGeometry(config);
+  if (nook.projectionWidth <= 0.08) return;
+  const projection = createBox({
+    name: `${nook.openingSide < 0 ? 'Right' : 'Left'} side-nook forward wall plane`,
+    category: 'Room wall projection',
+    width: nook.projectionWidth,
+    height: config.roomHeight,
+    depth: config.sideNookDepth,
+    x: nook.projectionCenterX,
+    y: config.roomHeight / 2,
+    z: config.sideNookDepth / 2,
+    material: materials.wall,
+    radius: 0.035,
+    castShadow: true,
+    materialLabel: 'Painted gypsum wall',
+    note: `Forward wall plane leaving a one-sided recessed opening on the ${nook.openingSide < 0 ? 'left' : 'right'}.`,
+  });
+  addEdgeHighlight(projection, 0x8b8882, 0.1);
+  group.add(projection);
 }
 
 function buildBaseboards(
@@ -411,6 +654,7 @@ function buildBaseboards(
   if (derived.hasFireplace) {
     blockers.push({ start: -config.chimneyWidth / 2, end: config.chimneyWidth / 2 });
   }
+  blockers.push(...getArchitecturalBaseboardBlockers(config, baseboardHeight));
 
   const exposedBackWallSegments = subtractIntervals(
     { start: -config.roomWidth / 2, end: config.roomWidth / 2 },
@@ -458,6 +702,27 @@ function buildBaseboards(
     }
   }
 
+  if (config.roomLayout === 'side-nook') {
+    const nook = getSideNookGeometry(config);
+    if (nook.projectionWidth > 0.08) {
+      group.add(
+        createBox({
+          name: 'Side-nook forward-face baseboard',
+          category: 'Room trim',
+          width: nook.projectionWidth,
+          height: baseboardHeight,
+          depth: baseboardDepth,
+          x: nook.projectionCenterX,
+          y: backY,
+          z: config.sideNookDepth + baseboardDepth / 2,
+          material: materials.floorTrim,
+          radius: 0.045,
+          materialLabel: 'Paint-grade baseboard',
+        }),
+      );
+    }
+  }
+
   for (const direction of [-1, 1] as const) {
     const roomEdge = direction * (config.roomWidth / 2);
     const hasBookcaseAgainstSideWall = derived.bookcasePlacements.some((placement) => {
@@ -482,6 +747,53 @@ function buildBaseboards(
       }),
     );
   }
+}
+
+function getArchitecturalBaseboardBlockers(
+  config: ModelConfig,
+  baseboardHeight: number,
+): Interval[] {
+  const blockers: Interval[] = [];
+  if (config.roomLayout === 'door-wall') {
+    const halfOuterWidth = config.doorWidth / 2 + ROOM_STUDY.doorCasingWidth;
+    blockers.push({
+      start: config.doorCenterX - halfOuterWidth,
+      end: config.doorCenterX + halfOuterWidth,
+    });
+  }
+
+  if (
+    config.roomLayout === 'window-wall' ||
+    config.roomLayout === 'offset-window-wall' ||
+    config.roomLayout === 'double-window-wall'
+  ) {
+    const casing = ROOM_STUDY.windowCasingWidth;
+    for (const opening of getWindowOpeningsForLayout(config)) {
+      const sillBottomY = opening.bottomY - casing - 1.4;
+      if (sillBottomY > baseboardHeight + 0.05) continue;
+      const halfSillWidth = opening.width / 2 + casing + 1;
+      blockers.push({
+        start: opening.centerX - halfSillWidth,
+        end: opening.centerX + halfSillWidth,
+      });
+    }
+  }
+
+  if (config.roomLayout === 'media-wall') {
+    const mediaBottomY = getMediaZoneCenterY(config) - config.mediaZoneHeight / 2;
+    if (mediaBottomY <= baseboardHeight + 0.05) {
+      blockers.push({
+        start: -config.mediaZoneWidth / 2,
+        end: config.mediaZoneWidth / 2,
+      });
+    }
+  }
+
+  if (config.roomLayout === 'side-nook') {
+    const nook = getSideNookGeometry(config);
+    blockers.push({ start: nook.projectionStartX, end: nook.projectionEndX });
+  }
+  return blockers;
 }
 
 interface Interval {

@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { existsSync } from 'node:fs';
 import {
   applyRoomLayoutPreset,
   clampConfig,
@@ -7,10 +8,13 @@ import {
   fitBookcasesToSelectedOpening,
   configToUrl,
   getDefaultConfigForLayout,
+  getLayoutDimensionKeys,
   getPlacementOptions,
+  getRoomLayoutOption,
   ROOM_LAYOUT_OPTIONS,
   readConfigFromUrl,
   type ModelConfig,
+  type PlacementTarget,
   type RoomLayoutId,
 } from '../src/model/config';
 
@@ -24,22 +28,143 @@ const EXPECTED_COUNTS: Record<RoomLayoutId, number> = {
   'window-wall': 2,
   'center-niche': 1,
   'offset-alcove': 1,
+  'door-wall': 2,
+  'offset-window-wall': 2,
+  'double-window-wall': 1,
+  'media-wall': 2,
+  'side-nook': 1,
 };
 
-describe('supplied room-layout presets', () => {
-  it('exposes the existing fireplace room plus four new supplied layouts', () => {
+const EXPECTED_TARGETS: Record<
+  RoomLayoutId,
+  readonly { value: PlacementTarget; placementCount: number }[]
+> = {
+  'fireplace-wall': [{ value: 'fireplace-pair', placementCount: 2 }],
+  'straight-wall': [
+    { value: 'wall-left', placementCount: 1 },
+    { value: 'wall-center', placementCount: 1 },
+    { value: 'wall-right', placementCount: 1 },
+  ],
+  'window-wall': [
+    { value: 'window-left', placementCount: 1 },
+    { value: 'window-right', placementCount: 1 },
+    { value: 'window-both', placementCount: 2 },
+  ],
+  'center-niche': [{ value: 'niche-center', placementCount: 1 }],
+  'offset-alcove': [{ value: 'alcove-center', placementCount: 1 }],
+  'door-wall': [
+    { value: 'door-left', placementCount: 1 },
+    { value: 'door-right', placementCount: 1 },
+    { value: 'door-both', placementCount: 2 },
+  ],
+  'offset-window-wall': [
+    { value: 'offset-window-left', placementCount: 1 },
+    { value: 'offset-window-right', placementCount: 1 },
+    { value: 'offset-window-both', placementCount: 2 },
+  ],
+  'double-window-wall': [
+    { value: 'double-window-center', placementCount: 1 },
+    { value: 'double-window-outer', placementCount: 2 },
+  ],
+  'media-wall': [
+    { value: 'media-left', placementCount: 1 },
+    { value: 'media-right', placementCount: 1 },
+    { value: 'media-both', placementCount: 2 },
+  ],
+  'side-nook': [
+    { value: 'side-nook-left', placementCount: 1 },
+    { value: 'side-nook-right', placementCount: 1 },
+  ],
+};
+
+const ALL_TARGET_CASES = ROOM_LAYOUT_OPTIONS.flatMap((layoutOption) =>
+  EXPECTED_TARGETS[layoutOption.value].map((target) => ({
+    roomLayout: layoutOption.value,
+    ...target,
+  })),
+);
+
+describe('ten-layout room catalog', () => {
+  it('exposes the five owner references followed by five catalog studies', () => {
     expect(ROOM_LAYOUT_OPTIONS.map((option) => option.value)).toEqual([
       'fireplace-wall',
       'straight-wall',
       'window-wall',
       'center-niche',
       'offset-alcove',
+      'door-wall',
+      'offset-window-wall',
+      'double-window-wall',
+      'media-wall',
+      'side-nook',
     ]);
     expect(ROOM_LAYOUT_OPTIONS.find((option) => option.value === 'offset-alcove')).toMatchObject({
       referenceFile: 'reference/layout-deep-alcove-left.jpg',
       secondaryReferenceFile: 'reference/layout-deep-alcove-right.jpg',
     });
   });
+
+  it('labels source provenance, recognition prompts, and categories without invented references', () => {
+    const ownerReferences = ROOM_LAYOUT_OPTIONS.filter(
+      (option) => option.sourceKind === 'owner-reference',
+    );
+    const catalogStudies = ROOM_LAYOUT_OPTIONS.filter(
+      (option) => option.sourceKind === 'catalog-study',
+    );
+
+    expect(ownerReferences.map((option) => option.value)).toEqual([
+      'fireplace-wall',
+      'straight-wall',
+      'window-wall',
+      'center-niche',
+      'offset-alcove',
+    ]);
+    expect(catalogStudies.map((option) => option.value)).toEqual([
+      'door-wall',
+      'offset-window-wall',
+      'double-window-wall',
+      'media-wall',
+      'side-nook',
+    ]);
+    expect(ownerReferences.every((option) => option.referenceFile?.startsWith('reference/'))).toBe(true);
+    expect(catalogStudies.every((option) => option.referenceFile === undefined)).toBe(true);
+    expect(ROOM_LAYOUT_OPTIONS.every((option) => option.recognitionPrompt.trim().length > 20)).toBe(true);
+    expect(ROOM_LAYOUT_OPTIONS.map((option) => [option.value, option.category])).toEqual([
+      ['fireplace-wall', 'feature-walls'],
+      ['straight-wall', 'simple-walls'],
+      ['window-wall', 'window-walls'],
+      ['center-niche', 'recesses'],
+      ['offset-alcove', 'recesses'],
+      ['door-wall', 'simple-walls'],
+      ['offset-window-wall', 'window-walls'],
+      ['double-window-wall', 'window-walls'],
+      ['media-wall', 'feature-walls'],
+      ['side-nook', 'recesses'],
+    ]);
+    for (const option of ROOM_LAYOUT_OPTIONS) {
+      expect(getRoomLayoutOption(option.value)).toBe(option);
+    }
+  });
+
+  it('ships every owner-reference asset at the path used by the production UI', () => {
+    for (const option of ROOM_LAYOUT_OPTIONS.filter(
+      (layoutOption) => layoutOption.sourceKind === 'owner-reference',
+    )) {
+      for (const referenceFile of [option.referenceFile, option.secondaryReferenceFile]) {
+        if (!referenceFile) continue;
+        expect(existsSync(new URL(`../public/${referenceFile}`, import.meta.url))).toBe(true);
+      }
+    }
+  });
+
+  it.each(ROOM_LAYOUT_OPTIONS.map((option) => option.value))(
+    'exposes the exact placement choices for %s',
+    (roomLayout) => {
+      expect(getPlacementOptions(roomLayout).map((option) => option.value)).toEqual(
+        EXPECTED_TARGETS[roomLayout].map((target) => target.value),
+      );
+    },
+  );
 
   it.each(ROOM_LAYOUT_OPTIONS.map((option) => option.value))(
     'derives finite, positive placements for %s',
@@ -130,15 +255,72 @@ describe('supplied room-layout presets', () => {
     expect(url.searchParams.get('rightBookcaseWidth')).toBe('55');
     expect(url.searchParams.has('leftBookcaseWidth')).toBe(false);
   });
+
+  it.each(ALL_TARGET_CASES)(
+    'derives $placementCount contained placement(s) for $roomLayout / $value',
+    ({ roomLayout, value, placementCount }) => {
+      const config = clampConfig({
+        ...getDefaultConfigForLayout(roomLayout),
+        placementTarget: value,
+      });
+      const derived = deriveLayout(config);
+
+      expect(config.placementTarget).toBe(value);
+      expect(derived.bookcasePlacements).toHaveLength(placementCount);
+      expect(derived.selectedOpeningLabel).toBe(
+        getPlacementOptions(roomLayout).find((option) => option.value === value)?.label,
+      );
+      for (const placement of derived.bookcasePlacements) {
+        expect(placement.openingWidth).toBeGreaterThanOrEqual(44);
+        expect(placement.width).toBeGreaterThanOrEqual(44);
+        expect(placement.x - placement.width / 2).toBeGreaterThanOrEqual(
+          placement.openingStartX - 1e-7,
+        );
+        expect(placement.x + placement.width / 2).toBeLessThanOrEqual(
+          placement.openingEndX + 1e-7,
+        );
+      }
+    },
+  );
+
+  it.each(ROOM_LAYOUT_OPTIONS.map((option) => option.value))(
+    'omits dormant layout dimensions from %s share URLs',
+    (roomLayout) => {
+      vi.stubGlobal('window', {
+        location: {
+          search: '',
+          href: 'https://example.test/fireplace-bookcases-3d/',
+        },
+      });
+      const noisyConfig = clampConfig({
+        ...getDefaultConfigForLayout(roomLayout),
+        chimneyWidth: 80,
+        wallOpeningWidth: 91,
+        windowWidth: 57,
+        nicheWidth: 81,
+        alcoveOpeningWidth: 92,
+        doorWidth: 41,
+        doubleWindowGap: 83,
+        mediaZoneWidth: 79,
+        sideNookWidth: 87,
+      });
+      const params = new URL(configToUrl(noisyConfig)).searchParams;
+      const activeKeys = new Set(getLayoutDimensionKeys(roomLayout).map(String));
+      const allLayoutKeys = new Set(
+        ROOM_LAYOUT_OPTIONS.flatMap((option) => getLayoutDimensionKeys(option.value).map(String)),
+      );
+
+      for (const key of allLayoutKeys) {
+        if (!activeKeys.has(key)) expect(params.has(key)).toBe(false);
+      }
+    },
+  );
 });
 
 describe('fit-to-opening behavior', () => {
-  it.each([
-    'straight-wall',
-    'window-wall',
-    'center-niche',
-    'offset-alcove',
-  ] as const)('loads and fits the active unit or units for %s', (roomLayout) => {
+  it.each(ROOM_LAYOUT_OPTIONS.map((option) => option.value).filter(
+    (roomLayout) => roomLayout !== 'fireplace-wall',
+  ))('loads and fits the active unit or units for %s', (roomLayout) => {
     const fitted = applyRoomLayoutPreset(DEFAULT_CONFIG, roomLayout);
     const derived = deriveLayout(fitted);
 
@@ -186,9 +368,110 @@ describe('fit-to-opening behavior', () => {
     expect(derived.leftShelfSupportRequired).toBe(true);
     expect(derived.structuralWarnings.some((warning) => warning.includes('above the 36″'))).toBe(true);
   });
+
+  it('fits unequal doorway flanks from the cased opening and its offset', () => {
+    const config = clampConfig({
+      ...getDefaultConfigForLayout('door-wall'),
+      placementTarget: 'door-both',
+      doorCenterX: 12,
+      leftBookcaseWidth: 44,
+      rightBookcaseWidth: 44,
+    });
+    const fitted = fitBookcasesToSelectedOpening(config);
+    const [left, right] = deriveLayout(fitted).bookcasePlacements;
+
+    expect([left.openingWidth, right.openingWidth]).toEqual([79.5, 55.5]);
+    expect([fitted.leftBookcaseWidth, fitted.rightBookcaseWidth]).toEqual([79.5, 55.5]);
+    expect(fitBookcasesToSelectedOpening(fitted)).toEqual(fitted);
+  });
+
+  it('fits unequal flanks around an offset window without crossing its casing', () => {
+    const config = clampConfig({
+      ...getDefaultConfigForLayout('offset-window-wall'),
+      placementTarget: 'offset-window-both',
+      windowCenterX: -10,
+      leftBookcaseWidth: 44,
+      rightBookcaseWidth: 44,
+    });
+    const fitted = fitBookcasesToSelectedOpening(config);
+    const [left, right] = deriveLayout(fitted).bookcasePlacements;
+
+    expect([left.openingWidth, right.openingWidth]).toEqual([57.5, 77.5]);
+    expect([fitted.leftBookcaseWidth, fitted.rightBookcaseWidth]).toEqual([57.5, 77.5]);
+    expect(left.openingEndX).toBe(-38.5);
+    expect(right.openingStartX).toBe(18.5);
+  });
+
+  it('uses the clear wall between two windows or both outer wall zones', () => {
+    const centerConfig = clampConfig({
+      ...getDefaultConfigForLayout('double-window-wall'),
+      placementTarget: 'double-window-center',
+    });
+    const centerFitted = fitBookcasesToSelectedOpening(centerConfig);
+    expect(deriveLayout(centerFitted).bookcasePlacements.map((placement) => placement.openingWidth)).toEqual([69]);
+    expect(centerFitted.leftBookcaseWidth).toBe(69);
+
+    const outerConfig = clampConfig({
+      ...getDefaultConfigForLayout('double-window-wall'),
+      placementTarget: 'double-window-outer',
+    });
+    const outerFitted = fitBookcasesToSelectedOpening(outerConfig);
+    expect(deriveLayout(outerFitted).bookcasePlacements.map((placement) => placement.openingWidth)).toEqual([
+      52.5,
+      52.5,
+    ]);
+    expect([outerFitted.leftBookcaseWidth, outerFitted.rightBookcaseWidth]).toEqual([52.5, 52.5]);
+  });
+
+  it('fits the media flanks and either one-sided nook from their editable study spans', () => {
+    const media = applyRoomLayoutPreset(DEFAULT_CONFIG, 'media-wall');
+    expect(deriveLayout(media).bookcasePlacements.map((placement) => placement.openingWidth)).toEqual([
+      73.5,
+      73.5,
+    ]);
+
+    for (const placementTarget of ['side-nook-left', 'side-nook-right'] as const) {
+      const nook = fitBookcasesToSelectedOpening(clampConfig({
+        ...getDefaultConfigForLayout('side-nook'),
+        placementTarget,
+      }));
+      const [placement] = deriveLayout(nook).bookcasePlacements;
+      expect(placement.openingWidth).toBe(72);
+      expect(placement.width).toBe(72);
+      expect(placement.sourceSide).toBe(placementTarget.endsWith('left') ? 'left' : 'right');
+    }
+  });
 });
 
 describe('layout-specific constraints', () => {
+  it('preserves valid customer room widths without reserving inactive placement zones', () => {
+    const doorway = clampConfig({
+      ...getDefaultConfigForLayout('door-wall'),
+      placementTarget: 'door-left',
+      roomWidth: 150,
+      doorCenterX: 48,
+    });
+    expect(doorway.roomWidth).toBe(150);
+    expect(deriveLayout(doorway).bookcasePlacements[0].openingWidth).toBe(100.5);
+
+    const offsetWindow = clampConfig({
+      ...getDefaultConfigForLayout('offset-window-wall'),
+      placementTarget: 'offset-window-left',
+      roomWidth: 160,
+      windowCenterX: 40,
+    });
+    expect(offsetWindow.roomWidth).toBe(160);
+    expect(deriveLayout(offsetWindow).bookcasePlacements[0].openingWidth).toBe(91.5);
+
+    const betweenWindows = clampConfig({
+      ...getDefaultConfigForLayout('double-window-wall'),
+      placementTarget: 'double-window-center',
+      roomWidth: 180,
+    });
+    expect(betweenWindows.roomWidth).toBe(180);
+    expect(deriveLayout(betweenWindows).bookcasePlacements[0].openingWidth).toBe(69);
+  });
+
   it('does not let dormant chimney geometry shrink a straight-wall bookcase', () => {
     const config = clampConfig({
       ...getDefaultConfigForLayout('straight-wall'),
@@ -240,14 +523,32 @@ describe('layout-specific constraints', () => {
     expect(clampConfig(config)).toEqual(config);
   });
 
-  it.each(ROOM_LAYOUT_OPTIONS.map((option) => option.value))(
-    'stays finite and contained under adversarial inputs for %s',
-    (roomLayout) => {
+  it.each(ALL_TARGET_CASES)(
+    'stays finite, contained, and idempotent for adversarial $roomLayout / $value',
+    ({ roomLayout, value, placementCount }) => {
       const config = clampConfig({
         ...getDefaultConfigForLayout(roomLayout),
+        placementTarget: value,
         roomWidth: 72,
         roomDepth: 72,
         roomHeight: 84,
+        wallOpeningWidth: 180,
+        windowWidth: 96,
+        windowHeight: 72,
+        windowSillHeight: 60,
+        nicheWidth: 144,
+        nicheDepth: 48,
+        alcoveOpeningWidth: 108,
+        alcoveDepth: 240,
+        doorWidth: 72,
+        doorHeight: 96,
+        doorCenterX: 48,
+        windowCenterX: -48,
+        doubleWindowGap: 120,
+        mediaZoneWidth: 120,
+        mediaZoneHeight: 72,
+        sideNookWidth: 144,
+        sideNookDepth: 48,
         leftBookcaseWidth: 180,
         rightBookcaseWidth: 180,
         bookcaseHeight: 156,
@@ -257,14 +558,30 @@ describe('layout-specific constraints', () => {
 
       expect(clampConfig(config)).toEqual(config);
       expect(config.bookcaseHeight).toBeLessThan(config.roomHeight);
+      expect(derived.bookcasePlacements).toHaveLength(placementCount);
       for (const placement of derived.bookcasePlacements) {
+        expect([
+          placement.x,
+          placement.width,
+          placement.openingStartX,
+          placement.openingEndX,
+          placement.openingWidth,
+        ].every(Number.isFinite)).toBe(true);
         expect(placement.width).toBeGreaterThanOrEqual(44);
+        expect(placement.openingWidth).toBeGreaterThanOrEqual(44);
         expect(placement.x - placement.width / 2).toBeGreaterThanOrEqual(
           placement.openingStartX - 1e-7,
         );
         expect(placement.x + placement.width / 2).toBeLessThanOrEqual(
           placement.openingEndX + 1e-7,
         );
+      }
+
+      const fitted = fitBookcasesToSelectedOpening(config);
+      expect(fitBookcasesToSelectedOpening(fitted)).toEqual(fitted);
+      for (const placement of deriveLayout(fitted).bookcasePlacements) {
+        expect(placement.width).toBeLessThanOrEqual(placement.openingWidth + 1e-7);
+        expect(placement.width * 8).toBe(Math.round(placement.width * 8));
       }
     },
   );
