@@ -2,9 +2,9 @@
 
 **Last updated:** 2026-07-22
 
-**Project stage:** Ten-layout desktop catalog locally verified; GitHub Pages publication pending
+**Project stage:** Ten-layout desktop catalog released and live-verified on GitHub Pages
 
-**Working branch:** `agent/layout-catalog`
+**Published branch:** `main`
 
 **Target repository:** `ZimaP/fireplace-bookcases-3d`
 
@@ -68,11 +68,12 @@ Before the ten-layout catalog changes, the five-layout release on `main` had the
 
 Those results must not be treated as verification of the new ten-layout branch.
 
-## Publication checks still required
+## Completed publication checks
 
-- Merge through a focused pull request.
-- Wait for the GitHub Pages workflow to complete against the merged commit.
-- Open the public URL, exercise the new catalog on the deployed build, and confirm WebGL rendering and console state before reporting deployment complete.
+- Pull request [#6](https://github.com/ZimaP/fireplace-bookcases-3d/pull/6) merged the catalog as commit `6e41d1a0f8f1e4ca06504429e5a62f9913edea6e`.
+- GitHub Pages workflow run [29972350061](https://github.com/ZimaP/fireplace-bookcases-3d/actions/runs/29972350061) completed its verify/build, artifact upload, and deployment jobs successfully against that exact commit.
+- The public home page was opened at `https://zimap.github.io/fireplace-bookcases-3d/` and confirmed the default fireplace room, 10 catalog cards, 143 detailed parts, and active WebGL rendering.
+- Live interaction also covered the doorway and double-window scenarios, layout switching, place-and-fit, Perspective/Front/Plan cameras, part inspection, share-link copy, and PNG export. The deployed console had no warnings or errors.
 
 ## Drawing-controlled values
 
@@ -115,7 +116,6 @@ Door swings, hardware clearances, electrical outlets, switches, HVAC/radiators, 
 
 ## Remaining issues and recommended next work
 
-- Complete the publication checks above before calling the ten-layout catalog released.
 - Confirm whether IMG_6777 and IMG_6778 represent a distinct deep alcove or the same space as IMG_6768.
 - Replace every room/opening study default with customer or field dimensions before treating a fit result as fabrication information.
 - Any clear shelf span above 36 inches remains intentionally visible with a support warning and requires an engineered support detail.
@@ -125,7 +125,8 @@ Door swings, hardware clearances, electrical outlets, switches, HVAC/radiators, 
 
 ## Publication state
 
-- Current public URL: `https://zimap.github.io/fireplace-bookcases-3d/`.
-- Last verified public implementation: five-layout release from pull request `https://github.com/ZimaP/fireplace-bookcases-3d/pull/4`, merge commit `e19c463c5e446c154180ad94de1ab1ef4524dc3e`, Pages run `29970139252`.
-- The ten-layout catalog on `agent/layout-catalog` has not yet been merged or verified on GitHub Pages.
-- Do not claim this catalog deployment succeeded until the new live website is opened and its rendered model/catalog are checked.
+- Public URL: `https://zimap.github.io/fireplace-bookcases-3d/`.
+- Implementation pull request: `https://github.com/ZimaP/fireplace-bookcases-3d/pull/6`.
+- Published merge commit: `6e41d1a0f8f1e4ca06504429e5a62f9913edea6e`.
+- Verified GitHub Pages workflow: `https://github.com/ZimaP/fireplace-bookcases-3d/actions/runs/29972350061`.
+- Live verification completed successfully as described above.
