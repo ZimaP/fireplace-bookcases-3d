@@ -1,8 +1,8 @@
 # Project status — Fireplace Bookcases 3D
 
 **Last updated:** 2026-07-22
-**Project stage:** Verified multi-layout implementation; publication pending
-**Working branch:** `agent/layout-presets`
+**Project stage:** Published and publicly verified multi-layout study
+**Working branch:** `main` (publication record prepared on `agent/layout-presets-status`)
 **Target repository:** `ZimaP/fireplace-bookcases-3d`
 **Target public site:** `https://zimap.github.io/fireplace-bookcases-3d/`
 
@@ -29,12 +29,15 @@
 
 ## Verification completed on this branch
 
+- Fresh dependency install: `npm ci` passed.
 - `npm run verify` passed.
 - Automated coverage: 4 test files, 75 tests passed.
 - TypeScript project checking and the production Vite build passed.
 - The layout tests cover all five presets, every placement target, active URL state, fit-to-opening rounding, paired/single fitting, width warnings, and adversarial containment.
+- Production preview review at 1440 × 900 covered hero, front, and plan cameras; all five layouts; minimum, default, maximum, near-full-wall, and over-36-inch shelf-span cases; URL restore; fit-to-opening; part inspection; and PNG export.
+- The 1440 × 900 review passed without application console errors or warnings. Headless screenshot capture emitted only the browser driver's expected `ReadPixels` performance notice.
 - Updated visual-review images: `docs/layout-presets-hero.png` and `docs/layout-presets-front.png`.
-- `git diff --check` passed for the current worktree documentation update.
+- `git diff --check` passed.
 
 ## Drawing-controlled values
 
@@ -70,6 +73,8 @@ The new room images do not provide a complete dimension schedule. All new room, 
 
 ## Publication state
 
-- The multi-layout implementation is pending on branch `agent/layout-presets`.
-- It has not yet been merged, deployed, or publicly verified.
-- The intended publication target remains `https://zimap.github.io/fireplace-bookcases-3d/`; only a post-deployment browser check may move this state to complete.
+- Implementation pull request: `https://github.com/ZimaP/fireplace-bookcases-3d/pull/4`.
+- Published implementation merge commit on `main`: `e19c463c5e446c154180ad94de1ab1ef4524dc3e`.
+- GitHub Pages workflow run `29970139252` completed successfully, including verification, build, artifact upload, and deployment.
+- Public site verified: `https://zimap.github.io/fireplace-bookcases-3d/`.
+- Live browser verification confirmed the default fireplace room, the window-wall selector and right-side placement share state, the deep-alcove over-36-inch support warning, active WebGL rendering at 40+ fps, and no live console warnings or errors.

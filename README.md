@@ -90,9 +90,9 @@ npm run preview
 The repository includes `.github/workflows/deploy-pages.yml`; pushes to `main` run the full verification chain before publishing through GitHub Pages.
 
 - Repository: [github.com/ZimaP/fireplace-bookcases-3d](https://github.com/ZimaP/fireplace-bookcases-3d)
-- Target site: [zimap.github.io/fireplace-bookcases-3d](https://zimap.github.io/fireplace-bookcases-3d/)
+- Live site: [zimap.github.io/fireplace-bookcases-3d](https://zimap.github.io/fireplace-bookcases-3d/)
 
-The multi-layout release remains pending on its working branch and has not yet been publicly verified.
+The five-layout release is published and browser-verified on GitHub Pages.
 
 ## Source layout
 
