@@ -115,7 +115,7 @@ The repository includes `.github/workflows/deploy-pages.yml`; pushes to `main` r
 - Repository: [github.com/ZimaP/fireplace-bookcases-3d](https://github.com/ZimaP/fireplace-bookcases-3d)
 - Live site: [zimap.github.io/fireplace-bookcases-3d](https://zimap.github.io/fireplace-bookcases-3d/)
 
-The ten-layout catalog has passed local automated and desktop visual verification. Publication status and the final live check are recorded in [`PROJECT_STATUS.md`](PROJECT_STATUS.md).
+The ten-layout catalog is published and live-browser-verified on GitHub Pages. Verification details are recorded in [`PROJECT_STATUS.md`](PROJECT_STATUS.md).
 
 ## Source layout
 
