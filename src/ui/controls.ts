@@ -1,5 +1,13 @@
-import type { DerivedLayout, ModelConfig } from '../model/config';
-import { configToUrl, deriveLayout, formatInches } from '../model/config';
+import type { DerivedLayout, ModelConfig, RoomLayoutId } from '../model/config';
+import {
+  applyRoomLayoutPreset,
+  configToUrl,
+  deriveLayout,
+  formatInches,
+  getPlacementOptions,
+  getRoomLayoutOption,
+  ROOM_LAYOUT_OPTIONS,
+} from '../model/config';
 
 export type ViewPreset = 'hero' | 'front' | 'plan' | 'left-detail' | 'right-detail' | 'fireplace';
 
@@ -19,7 +27,7 @@ export interface ControlCallbacks {
   onConfigChange: (next: ModelConfig) => void;
   onViewPreset: (preset: ViewPreset) => void;
   onReset: () => void;
-  onFitBookcases: () => void;
+  onFitPlacement: () => void;
   onSaveImage: () => void;
   onCopyLink: () => void;
 }
@@ -67,7 +75,7 @@ export function createAppUi(
           <div class="brand-mark" aria-hidden="true"><span></span><span></span><i></i></div>
           <div>
             <div class="eyebrow">Parametric millwork model</div>
-            <h1>Fireplace Bookcases</h1>
+            <h1>Bookcase Room Studio</h1>
           </div>
         </div>
         <nav class="view-presets" aria-label="Camera views">
@@ -148,41 +156,64 @@ export function createAppUi(
   derivedReadout.setAttribute('aria-live', 'polite');
   derivedReadout.innerHTML = `
     <div class="derived-readout-heading">
-      <strong>Automatic shelf sizing</strong>
-      <small>Calculated from each clear bay span</small>
+      <strong data-derived="opening-label">Selected opening</strong>
+      <small><span data-derived="opening-width">—</span> clear · Fit preserves fixed construction</small>
     </div>
     <div class="derived-readout-grid">
-      <div>
-        <span>Left clear span</span>
-        <strong data-derived="left-span">—</strong>
-        <small data-derived="left-shelf">Shelf —</small>
+      <div data-derived-unit="0">
+        <span data-derived="unit-0-label">Bookcase</span>
+        <strong data-derived="unit-0-span">—</strong>
+        <small data-derived="unit-0-shelf">Shelf —</small>
       </div>
-      <div>
-        <span>Right clear span</span>
-        <strong data-derived="right-span">—</strong>
-        <small data-derived="right-shelf">Shelf —</small>
+      <div data-derived-unit="1">
+        <span data-derived="unit-1-label">Bookcase</span>
+        <strong data-derived="unit-1-span">—</strong>
+        <small data-derived="unit-1-shelf">Shelf —</small>
       </div>
     </div>
   `;
 
-  const groups: Array<{ title: string; subtitle?: string; fields: FieldDefinition[]; advanced?: boolean }> = [
+  const groups: Array<{
+    id: string;
+    title: string;
+    subtitle?: string;
+    fields: FieldDefinition[];
+    advanced?: boolean;
+  }> = [
     {
+      id: 'room',
       title: 'Room layout',
-      subtitle: 'U-shaped room and central chimney projection',
+      subtitle: 'Choose a supplied room, then select the cabinet installation position',
       fields: [
-        numberField('roomWidth', 'Room width', 150, 360, 0.25),
-        numberField('roomDepth', 'Room depth', 96, 300, 0.25),
+        selectField('roomLayout', 'Layout', ROOM_LAYOUT_OPTIONS.map((option) => ({
+          value: option.value,
+          label: option.label,
+        }))),
+        selectField('placementTarget', 'Bookcase position', getPlacementOptions(initialConfig.roomLayout).map(
+          (option) => ({ ...option }),
+        )),
+        numberField('roomWidth', 'Room width', 72, 360, 0.25),
+        numberField('roomDepth', 'Room depth', 72, 300, 0.25),
         numberField('roomHeight', 'Ceiling height', 84, 168, 0.25),
+        numberField('wallOpeningWidth', 'Wall study span', 44, 180, 0.125),
+        numberField('windowWidth', 'Window opening width', 24, 96, 0.125),
+        numberField('windowHeight', 'Window opening height', 24, 72, 0.125),
+        numberField('windowSillHeight', 'Window sill height', 18, 60, 0.125),
+        numberField('nicheWidth', 'Niche clear width', 44, 144, 0.125),
+        numberField('nicheDepth', 'Niche recess depth', 12, 48, 0.125),
+        numberField('alcoveOpeningWidth', 'Alcove clear width', 44, 108, 0.125),
+        numberField('alcoveDepth', 'Alcove depth', 48, 240, 0.25),
         numberField('chimneyWidth', 'Chimney width', 42, 96, 0.25),
         numberField('chimneyDepth', 'Chimney projection', 3, 24, 0.25),
       ],
     },
     {
+      id: 'bookcases',
       title: 'Bookcases',
       subtitle: 'Overall dimensions change; construction thicknesses stay independent',
       fields: [
-        numberField('leftBookcaseWidth', 'Left overall width', 44, 108, 0.125),
-        numberField('rightBookcaseWidth', 'Right overall width', 44, 108, 0.125),
+        numberField('leftBookcaseWidth', 'Left overall width', 44, 180, 0.125),
+        numberField('rightBookcaseWidth', 'Right overall width', 44, 180, 0.125),
         numberField('bookcaseHeight', 'Overall height', 72, 156, 0.125),
         numberField('upperDepth', 'Upper depth', 10, 22, 0.125),
         numberField('baseDepth', 'Base depth', 16, 30, 0.125),
@@ -191,6 +222,7 @@ export function createAppUi(
       ],
     },
     {
+      id: 'fireplace',
       title: 'Fireplace & mantel',
       subtitle: 'Classical mantel from the drawing on the layout chimney breast',
       fields: [
@@ -204,6 +236,7 @@ export function createAppUi(
       ],
     },
     {
+      id: 'installation',
       title: 'Installation details',
       subtitle: 'Field-fit dimensions; drawing construction values remain fixed',
       advanced: true,
@@ -217,6 +250,7 @@ export function createAppUi(
       ],
     },
     {
+      id: 'finish',
       title: 'Finish & visibility',
       fields: [
         selectField('cabinetFinish', 'Cabinet finish', [
@@ -243,6 +277,7 @@ export function createAppUi(
   for (const groupDefinition of groups) {
     const section = document.createElement(groupDefinition.advanced ? 'details' : 'section');
     section.className = groupDefinition.advanced ? 'control-group advanced-group' : 'control-group';
+    section.dataset.controlGroup = groupDefinition.id;
     if (groupDefinition.advanced) {
       const summary = document.createElement('summary');
       summary.innerHTML = `<span><strong>${groupDefinition.title}</strong><small>${groupDefinition.subtitle ?? ''}</small></span><i>+</i>`;
@@ -258,7 +293,13 @@ export function createAppUi(
     fields.className = 'field-stack';
     for (const definition of groupDefinition.fields) {
       const row = createField(definition, currentConfig, (key, rawValue) => {
-        const next = { ...currentConfig };
+        let next = { ...currentConfig };
+        if (key === 'roomLayout') {
+          next = applyRoomLayoutPreset(currentConfig, String(rawValue) as RoomLayoutId);
+          currentConfig = next;
+          callbacks.onConfigChange(next);
+          return;
+        }
         const current = next[key];
         if (typeof current === 'number') {
           (next[key] as number) = Number(rawValue);
@@ -270,6 +311,7 @@ export function createAppUi(
         currentConfig = next;
         callbacks.onConfigChange(next);
       });
+      row.element.dataset.fieldKey = String(definition.key);
       inputMap.set(definition.key, row.input);
       fields.appendChild(row.element);
     }
@@ -282,30 +324,55 @@ export function createAppUi(
   fitCard.className = 'logic-card';
   fitCard.innerHTML = `
     <div>
-      <strong>Fit bookcases to wall</strong>
-      <p>Calculates symmetrical unit widths from the room and chimney without changing shelf, face-frame, or case thickness.</p>
+      <strong>Fit selected opening</strong>
+      <p>Uses the selected room opening without scaling shelf, face-frame, door, or case thickness.</p>
     </div>
-    <button id="fit-bookcases" class="quiet-button">Fit</button>
+    <button id="fit-placement" class="quiet-button">Fit</button>
   `;
   controlsScroll.appendChild(fitCard);
 
   const drawingCard = document.createElement('a');
   drawingCard.className = 'reference-card';
   const baseUrl = (import.meta as ImportMeta & { env: { BASE_URL: string } }).env.BASE_URL;
-  const drawingUrl = `${baseUrl}reference/bookcase-detail-drawing.png`;
+  const initialLayoutOption = getRoomLayoutOption(initialConfig.roomLayout);
+  const drawingUrl = `${baseUrl}${initialLayoutOption.referenceFile}`;
   drawingCard.href = drawingUrl;
   drawingCard.target = '_blank';
   drawingCard.rel = 'noreferrer';
   drawingCard.innerHTML = `
     <span class="reference-thumb drawing-thumb" aria-hidden="true"></span>
-    <span><strong>Reference drawing</strong><small>Open the supplied millwork detail</small></span>
+    <span><strong data-reference-title>${initialLayoutOption.label} reference</strong><small data-reference-subtitle>Open the supplied room image</small></span>
     <i>↗</i>
   `;
   required<HTMLElement>(drawingCard, '.drawing-thumb').style.backgroundImage = `url("${drawingUrl}")`;
   controlsScroll.appendChild(drawingCard);
 
+  const secondaryReferenceCard = document.createElement('a');
+  secondaryReferenceCard.className = 'reference-card secondary-reference-card';
+  secondaryReferenceCard.target = '_blank';
+  secondaryReferenceCard.rel = 'noreferrer';
+  secondaryReferenceCard.hidden = true;
+  secondaryReferenceCard.innerHTML = `
+    <span class="reference-thumb secondary-reference-thumb" aria-hidden="true"></span>
+    <span><strong>Opposing supplied view</strong><small>Open the second alcove image</small></span>
+    <i>↗</i>
+  `;
+  controlsScroll.appendChild(secondaryReferenceCard);
+
+  const millworkCard = document.createElement('a');
+  millworkCard.className = 'reference-card compact-reference-card';
+  const millworkUrl = `${baseUrl}reference/bookcase-detail-drawing.png`;
+  millworkCard.href = millworkUrl;
+  millworkCard.target = '_blank';
+  millworkCard.rel = 'noreferrer';
+  millworkCard.innerHTML = `
+    <span><strong>Millwork construction drawing</strong><small>Fixed cabinet logic for every room</small></span>
+    <i>↗</i>
+  `;
+  controlsScroll.appendChild(millworkCard);
+
   required<HTMLButtonElement>(root, '#reset-model').addEventListener('click', callbacks.onReset);
-  required<HTMLButtonElement>(root, '#fit-bookcases').addEventListener('click', callbacks.onFitBookcases);
+  required<HTMLButtonElement>(root, '#fit-placement').addEventListener('click', callbacks.onFitPlacement);
   required<HTMLButtonElement>(root, '#save-image').addEventListener('click', callbacks.onSaveImage);
   required<HTMLButtonElement>(root, '#copy-link').addEventListener('click', callbacks.onCopyLink);
 
@@ -327,6 +394,16 @@ export function createAppUi(
 
   const sync = (config: ModelConfig, derived: DerivedLayout): void => {
     currentConfig = { ...config };
+    const placementSelect = inputMap.get('placementTarget');
+    if (placementSelect instanceof HTMLSelectElement) {
+      const options = getPlacementOptions(config.roomLayout);
+      placementSelect.replaceChildren(...options.map((option) => {
+        const element = document.createElement('option');
+        element.value = option.value;
+        element.textContent = option.label;
+        return element;
+      }));
+    }
     for (const [key, input] of inputMap) {
       const value = config[key];
       if (input instanceof HTMLInputElement && input.type === 'checkbox') {
@@ -335,6 +412,83 @@ export function createAppUi(
         input.value = String(value);
       }
     }
+
+    const layoutSpecificKeys: Array<keyof ModelConfig> = [
+      'wallOpeningWidth',
+      'windowWidth',
+      'windowHeight',
+      'windowSillHeight',
+      'nicheWidth',
+      'nicheDepth',
+      'alcoveOpeningWidth',
+      'alcoveDepth',
+      'chimneyWidth',
+      'chimneyDepth',
+    ];
+    for (const key of layoutSpecificKeys) setFieldVisibility(root, key, false);
+    const visibleLayoutKeys: Partial<Record<ModelConfig['roomLayout'], Array<keyof ModelConfig>>> = {
+      'fireplace-wall': ['chimneyWidth', 'chimneyDepth'],
+      'straight-wall': ['wallOpeningWidth'],
+      'window-wall': ['windowWidth', 'windowHeight', 'windowSillHeight'],
+      'center-niche': ['nicheWidth', 'nicheDepth'],
+      'offset-alcove': ['alcoveOpeningWidth', 'alcoveDepth'],
+    };
+    for (const key of visibleLayoutKeys[config.roomLayout] ?? []) setFieldVisibility(root, key, true);
+    setFieldVisibility(root, 'roomWidth', config.roomLayout !== 'offset-alcove');
+    setFieldVisibility(root, 'roomDepth', config.roomLayout !== 'offset-alcove');
+
+    const activeSides = new Set(derived.bookcasePlacements.map((placement) => placement.sourceSide));
+    setFieldVisibility(root, 'leftBookcaseWidth', activeSides.has('left'));
+    setFieldVisibility(root, 'rightBookcaseWidth', activeSides.has('right'));
+    setFieldLabel(
+      root,
+      'leftBookcaseWidth',
+      derived.bookcasePlacements.length === 1 ? 'Selected bookcase width' : 'Left overall width',
+    );
+    setFieldLabel(
+      root,
+      'rightBookcaseWidth',
+      derived.bookcasePlacements.length === 1 ? 'Selected bookcase width' : 'Right overall width',
+    );
+    setFieldVisibility(
+      root,
+      'centerGap',
+      config.roomLayout === 'fireplace-wall' || config.roomLayout === 'window-wall',
+    );
+    setFieldLabel(
+      root,
+      'centerGap',
+      config.roomLayout === 'window-wall' ? 'Gap at window casing' : 'Gap at chimney',
+    );
+    setFieldVisibility(root, 'showFire', derived.hasFireplace);
+    const fireplaceGroup = root.querySelector<HTMLElement>('[data-control-group="fireplace"]');
+    if (fireplaceGroup) fireplaceGroup.hidden = !derived.hasFireplace;
+
+    const fireplaceView = root.querySelector<HTMLButtonElement>('[data-view="fireplace"]');
+    const rightDetailView = root.querySelector<HTMLButtonElement>('[data-view="right-detail"]');
+    const leftDetailView = root.querySelector<HTMLButtonElement>('[data-view="left-detail"]');
+    if (fireplaceView) fireplaceView.hidden = !derived.hasFireplace;
+    if (rightDetailView) rightDetailView.hidden = derived.bookcasePlacements.length < 2;
+    if (leftDetailView) {
+      leftDetailView.textContent = derived.bookcasePlacements.length < 2 ? 'Bookcase' : 'Left detail';
+    }
+
+    const layoutOption = getRoomLayoutOption(config.roomLayout);
+    const referenceUrl = `${baseUrl}${layoutOption.referenceFile}`;
+    drawingCard.href = referenceUrl;
+    required<HTMLElement>(drawingCard, '.drawing-thumb').style.backgroundImage = `url("${referenceUrl}")`;
+    required<HTMLElement>(drawingCard, '[data-reference-title]').textContent = `${layoutOption.label} reference`;
+    required<HTMLElement>(drawingCard, '[data-reference-subtitle]').textContent = layoutOption.description;
+    if (layoutOption.secondaryReferenceFile) {
+      const secondaryUrl = `${baseUrl}${layoutOption.secondaryReferenceFile}`;
+      secondaryReferenceCard.href = secondaryUrl;
+      required<HTMLElement>(secondaryReferenceCard, '.secondary-reference-thumb').style.backgroundImage = `url("${secondaryUrl}")`;
+      secondaryReferenceCard.hidden = false;
+    } else {
+      secondaryReferenceCard.hidden = true;
+      secondaryReferenceCard.removeAttribute('href');
+    }
+
     updateWarnings(shell.warningPanel, derived);
     updateDerivedReadout(derivedReadout, derived);
   };
@@ -485,20 +639,51 @@ function updateDerivedReadout(
   readout: HTMLElement,
   derived: DerivedLayout,
 ): void {
-  required<HTMLElement>(readout, '[data-derived="left-span"]').textContent = formatInches(derived.leftBayWidth);
-  required<HTMLElement>(readout, '[data-derived="right-span"]').textContent = formatInches(derived.rightBayWidth);
-  required<HTMLElement>(readout, '[data-derived="left-shelf"]').textContent = formatShelfValue(
-    derived.leftAdjustableShelfThickness,
-    derived.leftShelfSupportRequired,
+  readout.classList.toggle('is-single', derived.bookcasePlacements.length === 1);
+  required<HTMLElement>(readout, '[data-derived="opening-label"]').textContent = derived.selectedOpeningLabel;
+  required<HTMLElement>(readout, '[data-derived="opening-width"]').textContent = formatInches(
+    derived.selectedOpeningWidth,
   );
-  required<HTMLElement>(readout, '[data-derived="right-shelf"]').textContent = formatShelfValue(
-    derived.rightAdjustableShelfThickness,
-    derived.rightShelfSupportRequired,
-  );
+  for (const index of [0, 1] as const) {
+    const card = required<HTMLElement>(readout, `[data-derived-unit="${index}"]`);
+    const placement = derived.bookcasePlacements[index];
+    card.hidden = !placement;
+    if (!placement) continue;
+    const isLeft = placement.sourceSide === 'left';
+    const bayWidth = isLeft ? derived.leftBayWidth : derived.rightBayWidth;
+    const shelfThickness = isLeft
+      ? derived.leftAdjustableShelfThickness
+      : derived.rightAdjustableShelfThickness;
+    const supportRequired = isLeft
+      ? derived.leftShelfSupportRequired
+      : derived.rightShelfSupportRequired;
+    required<HTMLElement>(card, `[data-derived="unit-${index}-label"]`).textContent = `${placement.label} clear bay`;
+    required<HTMLElement>(card, `[data-derived="unit-${index}-span"]`).textContent = formatInches(bayWidth);
+    required<HTMLElement>(card, `[data-derived="unit-${index}-shelf"]`).textContent = formatShelfValue(
+      shelfThickness,
+      supportRequired,
+    );
+  }
 }
 
 function formatShelfValue(value: number, supportRequired: boolean): string {
   return `Shelf ${formatInches(value)}${supportRequired ? ' · support required' : ''}`;
+}
+
+function setFieldVisibility(
+  root: ParentNode,
+  key: keyof ModelConfig,
+  visible: boolean,
+): void {
+  const row = root.querySelector<HTMLElement>(`[data-field-key="${String(key)}"]`);
+  if (row) row.hidden = !visible;
+}
+
+function setFieldLabel(root: ParentNode, key: keyof ModelConfig, label: string): void {
+  const element = root.querySelector<HTMLElement>(
+    `[data-field-key="${String(key)}"] .field-label > span`,
+  );
+  if (element) element.textContent = label;
 }
 
 function required<T extends Element>(root: ParentNode, selector: string): T {

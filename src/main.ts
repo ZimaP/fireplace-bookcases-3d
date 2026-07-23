@@ -9,6 +9,7 @@ import {
   configToUrl,
   copyConfig,
   DEFAULT_CONFIG,
+  fitBookcasesToSelectedOpening,
   readConfigFromUrl,
   type ModelConfig,
 } from './model/config';
@@ -80,7 +81,15 @@ controls.zoomToCursor = true;
 controls.target.set(0, 52, 7);
 
 const ui = createAppUi(app, config, {
-  onConfigChange: (next) => scheduleRebuild(next),
+  onConfigChange: (next) => {
+    if (next.roomLayout !== config.roomLayout) {
+      rebuildNow(next, true);
+      setViewPreset('hero');
+      flashStatus(`${assembly?.derived.layoutLabel ?? 'Room layout'} loaded from its supplied reference.`);
+      return;
+    }
+    scheduleRebuild(next);
+  },
   onViewPreset: (preset) => setViewPreset(preset),
   onReset: () => {
     config = copyConfig(DEFAULT_CONFIG);
@@ -88,18 +97,10 @@ const ui = createAppUi(app, config, {
     setViewPreset('hero');
     flashStatus('Model reset to the drawing-based starting dimensions.');
   },
-  onFitBookcases: () => {
-    const fittedWidth = roundTo(
-      (config.roomWidth - config.chimneyWidth) / 2 - config.centerGap,
-      0.125,
-    );
-    const next = clampConfig({
-      ...config,
-      leftBookcaseWidth: fittedWidth,
-      rightBookcaseWidth: fittedWidth,
-    });
+  onFitPlacement: () => {
+    const next = fitBookcasesToSelectedOpening(config);
     rebuildNow(next, true);
-    flashStatus('Bookcases fitted symmetrically; construction thicknesses were preserved.');
+    flashStatus('Bookcase fitted to the selected opening; fixed construction was preserved.');
   },
   onSaveImage: () => saveCurrentView(),
   onCopyLink: async () => {
@@ -119,7 +120,7 @@ controls.addEventListener('start', () => {
 ui.shell.canvasHost.appendChild(renderer.domElement);
 ui.shell.overlayHost.appendChild(labelRenderer.domElement);
 renderer.domElement.className = 'webgl-canvas';
-renderer.domElement.setAttribute('aria-label', 'Interactive 3D fireplace bookcase model');
+renderer.domElement.setAttribute('aria-label', 'Interactive 3D bookcase room model');
 renderer.domElement.tabIndex = 0;
 
 const raycaster = new THREE.Raycaster();
@@ -250,6 +251,12 @@ function rebuildNow(next: ModelConfig, updateUrl: boolean): void {
   scene.add(assembly.root);
   ui.sync(config, assembly.derived);
   updateControlBounds();
+  if (!assembly.derived.hasFireplace && activeViewPreset === 'fireplace') {
+    activeViewPreset = 'hero';
+  }
+  if (assembly.derived.bookcasePlacements.length < 2 && activeViewPreset === 'right-detail') {
+    activeViewPreset = 'left-detail';
+  }
   if (activeViewPreset) setViewPreset(activeViewPreset, false);
 
   if (updateUrl) {
@@ -347,14 +354,14 @@ function setViewPreset(preset: ViewPreset, animate = true): void {
 
   switch (preset) {
     case 'front':
-      target.set(center.x, center.y, Math.min(config.chimneyDepth + 4, bounds.max.z));
+      target.set(center.x, center.y, Math.min(assembly?.derived.installationFrontZ ?? 4, bounds.max.z));
       placeCameraForBounds(bounds, target, position, new THREE.Vector3(0, 0, 1), 1.14);
       break;
     case 'plan':
       target.set(center.x, 0, center.z);
       position.set(
         center.x,
-        Math.max(bounds.max.y + 18, fitDistanceToRectangle(size.x, size.z, 1.16)),
+        bounds.max.y + fitDistanceToRectangle(size.x, size.z, 1.18),
         center.z,
       );
       up.set(0, 0, -1);
@@ -373,7 +380,11 @@ function setViewPreset(preset: ViewPreset, animate = true): void {
       break;
     case 'hero':
     default:
-      target.set(center.x, bounds.min.y + size.y * 0.48, Math.min(config.chimneyDepth + 7, center.z));
+      target.set(
+        center.x,
+        bounds.min.y + size.y * 0.48,
+        Math.min((assembly?.derived.installationFrontZ ?? 0) + 4, center.z),
+      );
       placeCameraForBounds(bounds, target, position, new THREE.Vector3(-0.18, 0.12, 1), 1.2);
       break;
   }
@@ -404,11 +415,13 @@ function getPresetBounds(preset: ViewPreset): THREE.Box3 {
   let subject: THREE.Object3D | null = assembly?.root ?? null;
   if (assembly) {
     if (preset === 'left-detail') {
-      subject = assembly.root.getObjectByName('Left fireplace bookcase') ?? assembly.root;
+      subject = assembly.installations.children[0] ?? assembly.installations;
     } else if (preset === 'right-detail') {
-      subject = assembly.root.getObjectByName('Right fireplace bookcase') ?? assembly.root;
+      subject = assembly.installations.children.at(-1) ?? assembly.installations;
     } else if (preset === 'fireplace') {
-      subject = assembly.root.getObjectByName('Classical fireplace and electric firebox') ?? assembly.root;
+      subject = assembly.derived.hasFireplace
+        ? assembly.root.getObjectByName('Classical fireplace and electric firebox') ?? assembly.root
+        : assembly.installations;
     }
   }
 
@@ -506,7 +519,7 @@ function saveCurrentView(): void {
     const link = document.createElement('a');
     const objectUrl = URL.createObjectURL(blob);
     link.href = objectUrl;
-    link.download = `fireplace-bookcases-${new Date().toISOString().slice(0, 10)}.png`;
+    link.download = `${config.roomLayout}-bookcase-${new Date().toISOString().slice(0, 10)}.png`;
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -547,10 +560,6 @@ function isEditableTarget(target: EventTarget | null): boolean {
     target instanceof HTMLSelectElement ||
     target instanceof HTMLTextAreaElement ||
     (target instanceof HTMLElement && target.isContentEditable);
-}
-
-function roundTo(value: number, increment: number): number {
-  return Math.round(value / increment) * increment;
 }
 
 interface CameraTween {

@@ -10,11 +10,12 @@ import {
   disposeMaterialLibrary,
   type MaterialLibrary,
 } from './materials';
-import { disposeObject } from './primitives';
+import { disposeObject, type PartMetadata } from './primitives';
 import { buildRoom } from './room';
 
 export interface SceneAssembly {
   root: THREE.Group;
+  installations: THREE.Group;
   materials: MaterialLibrary;
   derived: ReturnType<typeof deriveLayout>;
   update: (timeSeconds: number) => void;
@@ -25,17 +26,37 @@ export function buildSceneAssembly(config: ModelConfig): SceneAssembly {
   const materials = createMaterialLibrary(config.cabinetFinish, config.floorFinish);
   const derived = deriveLayout(config);
   const root = new THREE.Group();
-  root.name = 'Fireplace bookcases project';
+  root.name = 'Parametric bookcase room study';
 
-  const room = buildRoom(config, materials);
+  const room = buildRoom(config, derived, materials);
   root.add(room);
 
-  const leftBookcase = buildBookcase('left', config, derived, materials);
-  const rightBookcase = buildBookcase('right', config, derived, materials);
-  root.add(leftBookcase.group, rightBookcase.group);
+  const installations = new THREE.Group();
+  installations.name = 'Built-in installations';
+  for (const placement of derived.bookcasePlacements) {
+    const bookcase = buildBookcase(placement.sourceSide, config, derived, materials);
+    bookcase.group.name = `${placement.label} bookcase`;
+    bookcase.group.position.set(placement.x, 0, placement.z);
+    bookcase.group.rotation.y = placement.rotationY;
+    bookcase.group.userData.placementId = placement.id;
+    const metadata = bookcase.group.userData.part as PartMetadata | undefined;
+    if (metadata) {
+      bookcase.group.userData.part = {
+        ...metadata,
+        name: `${placement.label} bookcase`,
+        note: 'The shared drawing-based two-bay, four-door cabinet installed in the selected room opening.',
+      } satisfies PartMetadata;
+    }
+    installations.add(bookcase.group);
+  }
+  root.add(installations);
 
-  const fireplace = buildFireplace(config, materials);
-  root.add(fireplace.group);
+  let updateFireplace = (_timeSeconds: number): void => undefined;
+  if (derived.hasFireplace) {
+    const fireplace = buildFireplace(config, materials);
+    root.add(fireplace.group);
+    updateFireplace = fireplace.update;
+  }
 
   const dimensions = buildDimensions(config, derived, materials);
   root.add(dimensions);
@@ -45,9 +66,10 @@ export function buildSceneAssembly(config: ModelConfig): SceneAssembly {
 
   return {
     root,
+    installations,
     materials,
     derived,
-    update: fireplace.update,
+    update: updateFireplace,
     destroy: () => {
       root.traverse((object) => {
         if (object instanceof CSS2DObject) {
@@ -72,7 +94,7 @@ function buildLighting(config: ModelConfig): THREE.Group {
   const key = new THREE.DirectionalLight(0xfff5e8, 1.12);
   key.name = 'Front key light';
   key.position.set(-config.roomWidth * 0.34, config.roomHeight * 1.35, config.roomDepth * 0.9);
-  key.target.position.set(0, config.roomHeight * 0.42, config.chimneyDepth + 6);
+  key.target.position.set(0, config.roomHeight * 0.42, derivedFrontZ(config) + 2);
   key.castShadow = true;
   key.shadow.mapSize.set(2048, 2048);
   key.shadow.bias = -0.00045;
@@ -89,7 +111,7 @@ function buildLighting(config: ModelConfig): THREE.Group {
   const fill = new THREE.DirectionalLight(0xcbd9ed, 0.28);
   fill.name = 'Cool fill light';
   fill.position.set(config.roomWidth * 0.52, config.roomHeight * 0.8, config.roomDepth * 0.45);
-  fill.target.position.set(0, config.roomHeight * 0.45, config.chimneyDepth);
+  fill.target.position.set(0, config.roomHeight * 0.45, derivedFrontZ(config));
   group.add(fill, fill.target);
 
   const frontArea = new THREE.RectAreaLight(
@@ -100,7 +122,7 @@ function buildLighting(config: ModelConfig): THREE.Group {
   );
   frontArea.name = 'Large front softbox';
   frontArea.position.set(0, config.roomHeight * 0.66, config.roomDepth * 0.93);
-  frontArea.lookAt(0, config.roomHeight * 0.45, config.chimneyDepth + 5);
+  frontArea.lookAt(0, config.roomHeight * 0.45, derivedFrontZ(config) + 3);
   group.add(frontArea);
 
   const leftWash = new THREE.SpotLight(0xffe5c5, 32, config.roomDepth * 1.2, Math.PI / 4.2, 0.62, 1.2);
@@ -117,4 +139,11 @@ function buildLighting(config: ModelConfig): THREE.Group {
   group.add(rightWash, rightWash.target);
 
   return group;
+}
+
+function derivedFrontZ(config: ModelConfig): number {
+  if (config.roomLayout === 'fireplace-wall') {
+    return Math.max(config.baseDepth, config.chimneyDepth + config.mantelDepth);
+  }
+  return config.baseDepth;
 }

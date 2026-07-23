@@ -2,7 +2,7 @@
 
 ## Scope
 
-This repository contains only the fireplace-bookcase room study. It does not inherit code, components, naming, layouts, or assets from any earlier project. The model is created procedurally in Three.js and rebuilds from a single parameter state.
+This repository contains only the supplied room-layout and fireplace-bookcase study. It does not inherit code, components, naming, layouts, or assets from any earlier project. The model is created procedurally in Three.js and rebuilds from a single parameter state.
 
 ## Coordinate system and units
 
@@ -10,6 +10,22 @@ This repository contains only the fireplace-bookcase room study. It does not inh
 - X = left/right across the fireplace wall.
 - Y = vertical from finished floor.
 - Z = projection into the room from the back-wall finish plane.
+
+## Room-layout presets and installation targets
+
+The same cabinet generator is placed into five selectable room studies:
+
+| Layout | Placement targets | Opening used for fit |
+|---|---|---|
+| Fireplace wall | Paired units flanking the fireplace | Left and right spans between the chimney gap and side walls |
+| Straight wall | Left, centered, or right | Editable wall study span anchored at the selected position |
+| Window wall | Left of window, right of window, or both | Side-wall spans outside the window casing and center gap |
+| Center niche | Centered in niche | Editable niche clear width |
+| Deep/offset alcove | Centered on rear wall | Editable alcove clear width |
+
+Changing the layout applies its room defaults and normalizes the placement target. **Fit selected opening** changes only the width of each active bookcase, rounding down to the nearest 1/8 inch so geometry never exceeds the target opening. The drawing-controlled construction values below remain unchanged.
+
+Editable layout-study inputs are room width, depth, and height; straight-wall study-span width; window width, height, and sill height; niche clear width and recess depth; alcove clear width and depth; and the fireplace chimney width and projection. These values are presentation assumptions, not drawing-derived fabrication dimensions.
 
 ## Bookcase construction
 
@@ -50,14 +66,17 @@ Overall room, bookcase, and fireplace dimensions may change. Carcass thickness, 
 ## Room shell
 
 - Finished wood floor generated from a procedural plank texture.
-- Back wall and partial side returns based on the supplied room-layout image.
+- Layout-specific back walls and side returns based on the supplied room images.
+- Straight-wall study span, centered divided-light window, recessed center niche, or deep U-shaped alcove geometry according to the active preset.
 - Baseboard and ceiling datum.
 - Room shell can be hidden for unobstructed inspection.
 
 ## Interface behavior
 
 - Desktop-only control panel.
+- Room-layout and placement-target selectors with only the relevant study dimensions exposed for each preset.
 - Overall room, bookcase, and fireplace controls.
+- Fit-to-opening for the active single or paired bookcase installation.
 - Automatic clamping where parameters depend on one another.
 - Live calculated clear span, derived shelf thickness, fit result, and design warnings.
 - Presentation finish choices.
@@ -67,4 +86,4 @@ Overall room, bookcase, and fireplace dimensions may change. Carcass thickness, 
 
 ## Current scope boundary
 
-The references do not contain a complete dimension schedule for the room, overall bookcase width/height, fireplace chase, mantel, or electrical insert. Those overall values are editable study defaults. Replace defaults in `src/model/config.ts` when verified field dimensions or a dimensioned elevation are supplied; do not change the construction rules merely to force a fit.
+The references do not contain a complete dimension schedule for any room shell, wall opening, window, niche, alcove, overall bookcase width/height, fireplace chase, mantel, or electrical insert. Every such overall value is an editable visual-study default. The supplied views identified as IMG_6777 and IMG_6778 are currently interpreted as the paired deep/offset-alcove reference, but they may be oblique documentation related to IMG_6768; that relationship remains unresolved. Replace study defaults in `src/model/config.ts` when verified field dimensions or a dimensioned plan/elevation are supplied; do not change the shared cabinet construction rules merely to force a fit.
