@@ -45,96 +45,109 @@ export function buildDimensions(
   });
 
   const bookcaseDimY = config.roomHeight + 5;
-  for (const side of ['left', 'right'] as const) {
-    const width = side === 'left' ? config.leftBookcaseWidth : config.rightBookcaseWidth;
-    const centerX = side === 'left' ? derived.leftBookcaseX : derived.rightBookcaseX;
+  for (const placement of derived.bookcasePlacements) {
+    const width = placement.width;
+    const centerX = placement.x;
+    const frontZ = placement.z + config.upperDepth + 2;
     addDimension({
       parent: group,
-      start: new THREE.Vector3(centerX - width / 2, bookcaseDimY, config.upperDepth + 2),
-      end: new THREE.Vector3(centerX + width / 2, bookcaseDimY, config.upperDepth + 2),
-      label: `${side === 'left' ? 'Left' : 'Right'} bookcase  ${formatInches(width)}`,
+      start: new THREE.Vector3(centerX - width / 2, bookcaseDimY, frontZ),
+      end: new THREE.Vector3(centerX + width / 2, bookcaseDimY, frontZ),
+      label: `${placement.label}  ${formatInches(width)}`,
       materials,
       extensions: [
         [
-          new THREE.Vector3(centerX - width / 2, config.bookcaseHeight, config.upperDepth),
-          new THREE.Vector3(centerX - width / 2, bookcaseDimY, config.upperDepth + 2),
+          new THREE.Vector3(centerX - width / 2, config.bookcaseHeight, placement.z + config.upperDepth),
+          new THREE.Vector3(centerX - width / 2, bookcaseDimY, frontZ),
         ],
         [
-          new THREE.Vector3(centerX + width / 2, config.bookcaseHeight, config.upperDepth),
-          new THREE.Vector3(centerX + width / 2, bookcaseDimY, config.upperDepth + 2),
+          new THREE.Vector3(centerX + width / 2, config.bookcaseHeight, placement.z + config.upperDepth),
+          new THREE.Vector3(centerX + width / 2, bookcaseDimY, frontZ),
         ],
       ],
     });
   }
 
-  const leftHeightX = derived.leftBookcaseX - config.leftBookcaseWidth / 2 - 5.2;
-  addDimension({
-    parent: group,
-    start: new THREE.Vector3(leftHeightX, 0, config.baseDepth + 1.5),
-    end: new THREE.Vector3(leftHeightX, config.bookcaseHeight, config.baseDepth + 1.5),
-    label: `Bookcase height  ${formatInches(config.bookcaseHeight)}`,
-    materials,
-    extensions: [
-      [
-        new THREE.Vector3(derived.leftBookcaseX - config.leftBookcaseWidth / 2, 0, config.baseDepth),
-        new THREE.Vector3(leftHeightX, 0, config.baseDepth + 1.5),
+  const firstPlacement = derived.bookcasePlacements[0];
+  if (firstPlacement) {
+    const heightX = firstPlacement.x - firstPlacement.width / 2 - 5.2;
+    addDimension({
+      parent: group,
+      start: new THREE.Vector3(heightX, 0, firstPlacement.z + config.baseDepth + 1.5),
+      end: new THREE.Vector3(heightX, config.bookcaseHeight, firstPlacement.z + config.baseDepth + 1.5),
+      label: `Bookcase height  ${formatInches(config.bookcaseHeight)}`,
+      materials,
+      extensions: [
+        [
+          new THREE.Vector3(firstPlacement.x - firstPlacement.width / 2, 0, firstPlacement.z + config.baseDepth),
+          new THREE.Vector3(heightX, 0, firstPlacement.z + config.baseDepth + 1.5),
+        ],
+        [
+          new THREE.Vector3(
+            firstPlacement.x - firstPlacement.width / 2,
+            config.bookcaseHeight,
+            firstPlacement.z + config.upperDepth,
+          ),
+          new THREE.Vector3(heightX, config.bookcaseHeight, firstPlacement.z + config.baseDepth + 1.5),
+        ],
       ],
-      [
-        new THREE.Vector3(
-          derived.leftBookcaseX - config.leftBookcaseWidth / 2,
-          config.bookcaseHeight,
-          config.upperDepth,
-        ),
-        new THREE.Vector3(leftHeightX, config.bookcaseHeight, config.baseDepth + 1.5),
-      ],
-    ],
-  });
+    });
+  }
 
-  const mantelDimensionY = config.mantelHeight + 5;
-  addDimension({
-    parent: group,
-    start: new THREE.Vector3(-config.mantelWidth / 2, mantelDimensionY, config.chimneyDepth + config.mantelDepth + 2),
-    end: new THREE.Vector3(config.mantelWidth / 2, mantelDimensionY, config.chimneyDepth + config.mantelDepth + 2),
-    label: `Mantel width  ${formatInches(config.mantelWidth)}`,
-    materials,
-    extensions: [
-      [
-        new THREE.Vector3(-config.mantelWidth / 2, config.mantelHeight, config.chimneyDepth + config.mantelDepth),
-        new THREE.Vector3(-config.mantelWidth / 2, mantelDimensionY, config.chimneyDepth + config.mantelDepth + 2),
+  if (derived.hasFireplace) {
+    const mantelDimensionY = config.mantelHeight + 5;
+    addDimension({
+      parent: group,
+      start: new THREE.Vector3(-config.mantelWidth / 2, mantelDimensionY, config.chimneyDepth + config.mantelDepth + 2),
+      end: new THREE.Vector3(config.mantelWidth / 2, mantelDimensionY, config.chimneyDepth + config.mantelDepth + 2),
+      label: `Mantel width  ${formatInches(config.mantelWidth)}`,
+      materials,
+      extensions: [
+        [
+          new THREE.Vector3(-config.mantelWidth / 2, config.mantelHeight, config.chimneyDepth + config.mantelDepth),
+          new THREE.Vector3(-config.mantelWidth / 2, mantelDimensionY, config.chimneyDepth + config.mantelDepth + 2),
+        ],
+        [
+          new THREE.Vector3(config.mantelWidth / 2, config.mantelHeight, config.chimneyDepth + config.mantelDepth),
+          new THREE.Vector3(config.mantelWidth / 2, mantelDimensionY, config.chimneyDepth + config.mantelDepth + 2),
+        ],
       ],
-      [
-        new THREE.Vector3(config.mantelWidth / 2, config.mantelHeight, config.chimneyDepth + config.mantelDepth),
-        new THREE.Vector3(config.mantelWidth / 2, mantelDimensionY, config.chimneyDepth + config.mantelDepth + 2),
-      ],
-    ],
-  });
+    });
+  }
 
-  const baseDimX = derived.rightBookcaseX + config.rightBookcaseWidth / 2 + 5.4;
-  addDimension({
-    parent: group,
-    start: new THREE.Vector3(baseDimX, 0, config.baseDepth + 1),
-    end: new THREE.Vector3(baseDimX, config.baseHeight + CONSTRUCTION.fixedTransitionShelfThickness, config.baseDepth + 1),
-    label: `Base + top  ${formatInches(config.baseHeight + CONSTRUCTION.fixedTransitionShelfThickness)}`,
-    materials,
-    extensions: [
-      [
-        new THREE.Vector3(derived.rightBookcaseX + config.rightBookcaseWidth / 2, 0, config.baseDepth),
-        new THREE.Vector3(baseDimX, 0, config.baseDepth + 1),
+  const lastPlacement = derived.bookcasePlacements.at(-1);
+  if (lastPlacement) {
+    const baseDimX = lastPlacement.x + lastPlacement.width / 2 + 5.4;
+    addDimension({
+      parent: group,
+      start: new THREE.Vector3(baseDimX, 0, lastPlacement.z + config.baseDepth + 1),
+      end: new THREE.Vector3(
+        baseDimX,
+        config.baseHeight + CONSTRUCTION.fixedTransitionShelfThickness,
+        lastPlacement.z + config.baseDepth + 1,
+      ),
+      label: `Base + top  ${formatInches(config.baseHeight + CONSTRUCTION.fixedTransitionShelfThickness)}`,
+      materials,
+      extensions: [
+        [
+          new THREE.Vector3(lastPlacement.x + lastPlacement.width / 2, 0, lastPlacement.z + config.baseDepth),
+          new THREE.Vector3(baseDimX, 0, lastPlacement.z + config.baseDepth + 1),
+        ],
+        [
+          new THREE.Vector3(
+            lastPlacement.x + lastPlacement.width / 2,
+            config.baseHeight + CONSTRUCTION.fixedTransitionShelfThickness,
+            lastPlacement.z + config.baseDepth,
+          ),
+          new THREE.Vector3(
+            baseDimX,
+            config.baseHeight + CONSTRUCTION.fixedTransitionShelfThickness,
+            lastPlacement.z + config.baseDepth + 1,
+          ),
+        ],
       ],
-      [
-        new THREE.Vector3(
-          derived.rightBookcaseX + config.rightBookcaseWidth / 2,
-          config.baseHeight + CONSTRUCTION.fixedTransitionShelfThickness,
-          config.baseDepth,
-        ),
-        new THREE.Vector3(
-          baseDimX,
-          config.baseHeight + CONSTRUCTION.fixedTransitionShelfThickness,
-          config.baseDepth + 1,
-        ),
-      ],
-    ],
-  });
+    });
+  }
 
   return group;
 }

@@ -19,6 +19,7 @@ export interface MaterialLibrary {
   brass: THREE.MeshStandardMaterial;
   hole: THREE.MeshStandardMaterial;
   glass: THREE.MeshPhysicalMaterial;
+  windowGlass: THREE.MeshPhysicalMaterial;
   ember: THREE.MeshStandardMaterial;
   log: THREE.MeshStandardMaterial;
   dimension: THREE.LineBasicMaterial;
@@ -143,6 +144,19 @@ export function createMaterialLibrary(
       thickness: 0.15,
       clearcoat: 1,
       clearcoatRoughness: 0.05,
+    }),
+    windowGlass: new THREE.MeshPhysicalMaterial({
+      color: 0xcde5e8,
+      emissive: 0x9fc4ca,
+      emissiveIntensity: 0.09,
+      roughness: 0.12,
+      transmission: 0.42,
+      transparent: true,
+      opacity: 0.48,
+      depthWrite: false,
+      thickness: 0.18,
+      clearcoat: 1,
+      clearcoatRoughness: 0.08,
     }),
     ember: new THREE.MeshStandardMaterial({
       color: 0x7a1a05,
