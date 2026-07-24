@@ -10,7 +10,7 @@
 
 A completely new, standalone Three.js project with a guided desktop planner for choosing a built-in, matching it to a room, entering the few measurements that control its fit, and reviewing the result in 3D. The room catalog contains ten scenarios: five interpreted from owner-supplied images and five generated planning studies. Room/opening dimensions and cabinet placement are parametric while drawing-derived construction thicknesses remain independent of overall resizing.
 
-The images above document the current four-step homeowner workflow. They do not indicate that this local UX revision has been deployed.
+The images above document the current four-step homeowner workflow now published through GitHub Pages.
 
 ## Customer workflow
 
@@ -116,14 +116,14 @@ npm run preview
 
 `npm run verify` runs the type check, automated tests, and production build. Vite writes the deployable site to `dist/`.
 
-## GitHub Pages configuration
+## Live GitHub Pages site
 
 The repository includes `.github/workflows/deploy-pages.yml`; pushes to `main` run the full verification chain before publishing through GitHub Pages.
 
 - Repository: [github.com/ZimaP/fireplace-bookcases-3d](https://github.com/ZimaP/fireplace-bookcases-3d)
-- Configured Pages target: [zimap.github.io/fireplace-bookcases-3d](https://zimap.github.io/fireplace-bookcases-3d/)
+- Live site: [zimap.github.io/fireplace-bookcases-3d](https://zimap.github.io/fireplace-bookcases-3d/)
 
-This README describes the current local implementation and does not claim that its homeowner-planner revision is deployed. Publication and verification history are recorded separately in [`PROJECT_STATUS.md`](PROJECT_STATUS.md).
+The four-step homeowner planner is published and live-browser-verified. Exact commit, workflow, and interaction checks are recorded in [`PROJECT_STATUS.md`](PROJECT_STATUS.md).
 
 ## Source layout
 

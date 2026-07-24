@@ -34,25 +34,25 @@ Continue the prepared fireplace-bookcase baseline inside one shared GitHub repos
 - `src/ui/controls.ts`: four-step homeowner workflow, room catalog, measurement controls, finish selection, status panels, and optional fine-tuning.
 - `src/customer-experience.css`: desktop customer-planner visual layer applied after the baseline application styles.
 
-## Current planner state
+## Current published planner state
 
-- The locally verified working branch uses four customer steps: **Design**, **Room**, **Measure**, and **Finish**.
+- The published site uses four customer steps: **Design**, **Room**, **Measure**, and **Finish**.
 - One bookcase family is currently available: **Classic Shaker built-in**. Do not imply that future families exist until each has approved geometry and construction logic.
 - The Room step exposes ten scenarios and only the placement choices valid for the selected scenario.
 - The Measure step asks for layout-relevant dimensions plus finished bookcase height. Window and door opening widths exclude trim because the model adds separate casing.
 - Number fields commit on blur or Enter, then active bookcase widths fit to the selected opening. Fixed construction values never scale.
 - The Finish step provides four presentation colors, a design review, sharing, and PNG saving. Detailed model controls remain under **Fine-tune your design**.
-- Review screens are under `docs/homeowner-planner-*.png`. Full local verification is recorded at the top of `PROJECT_STATUS.md`.
-- This UX refresh is not yet published. The public GitHub Pages site still represents the preceding ten-layout release until an exact new commit is deployed and browser-verified.
+- Review screens are under `docs/homeowner-planner-*.png`. Full local and live verification is recorded at the top of `PROJECT_STATUS.md`.
+- The homeowner planner is published on `main` and live-browser-verified at `https://zimap.github.io/fireplace-bookcases-3d/`.
 
 ## Next Codex mission
 
 1. Run `npm ci` and `npm run verify` before modifying the verified baseline.
 2. Inspect the owner references before changing geometry or construction behavior.
-3. Review the new four-step flow and `docs/homeowner-planner-*.png` with the owner.
-4. If accepted, open a focused pull request that lists the UX changes, unchanged drawing rules, verification results, review screenshots, and remaining measurement assumptions.
-5. After merge, verify the GitHub Pages workflow against the exact commit and open the public model before recording publication.
-6. The next product phase should either extend Measure into a photo/obstacle/verification workflow or add a genuinely modeled second bookcase family. Do not present placeholder cards as available products.
+3. Review the published four-step flow and `docs/homeowner-planner-*.png` with the owner.
+4. The next product phase should either extend Measure into a photo/obstacle/verification workflow or add a genuinely modeled second bookcase family.
+5. Do not present placeholder design cards as available products; every new family needs approved geometry, construction logic, copy, and verification.
+6. Keep recording every merged release, Pages workflow, and live-browser verification in `PROJECT_STATUS.md`.
 
 ## Deployment mission
 

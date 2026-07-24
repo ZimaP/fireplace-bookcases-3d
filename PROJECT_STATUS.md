@@ -2,17 +2,17 @@
 
 **Last updated:** 2026-07-23
 
-**Project stage:** Four-step homeowner planner implemented and locally verified; publication pending
+**Project stage:** Four-step homeowner planner released and live-verified on GitHub Pages
 
 **Published branch:** `main`
 
-**Working branch:** `agent/homeowner-planner-ux`
+**Working branch:** `agent/homeowner-planner-publication`
 
 **Target repository:** `ZimaP/fireplace-bookcases-3d`
 
 **Target public site:** `https://zimap.github.io/fireplace-bookcases-3d/`
 
-## Homeowner planner UX refresh — local verification
+## Homeowner planner UX release — verified
 
 - The customer journey is now four plain-language steps: **Choose your bookcase**, **Match your room**, **Measure your space**, and **Make it yours**.
 - The Design step truthfully presents one available family, **Classic Shaker built-in**, while leaving a clear pattern for future fully modeled design families.
@@ -41,7 +41,13 @@ Local verification completed on 2026-07-23:
 - `git diff --check` passed.
 - The Vite build continues to emit only the known non-blocking advisory for the minified Three.js bundle exceeding 500 kB.
 
-This refresh has not been published. The public site and publication records below describe the preceding ten-layout release on `main`.
+Publication verification completed on 2026-07-23:
+
+- Pull request [#8](https://github.com/ZimaP/fireplace-bookcases-3d/pull/8) merged the homeowner planner as commit `dcc675d5ed8d4996cf44081fe68d35e84c0dc851`.
+- GitHub Pages workflow run [30061055491](https://github.com/ZimaP/fireplace-bookcases-3d/actions/runs/30061055491) completed dependency installation, all verification/build steps, artifact upload, and deployment successfully against that exact commit.
+- The public site opened at `https://zimap.github.io/fireplace-bookcases-3d/` with the new page title, the four-step planner, active WebGL rendering, and ten room cards.
+- Live interaction covered Classic Shaker selection, the room catalog, doorway placement, the relevant measurement step, automatic fit, and the final finish/review step.
+- The deployed browser console had no warnings or errors.
 
 ## Source basis and catalog distinction
 
@@ -101,7 +107,7 @@ Before the ten-layout catalog changes, the five-layout release on `main` had the
 
 Those results must not be treated as verification of the new ten-layout branch.
 
-## Completed publication checks
+## Previous ten-layout publication checks
 
 - Pull request [#6](https://github.com/ZimaP/fireplace-bookcases-3d/pull/6) merged the catalog as commit `6e41d1a0f8f1e4ca06504429e5a62f9913edea6e`.
 - GitHub Pages workflow run [29972350061](https://github.com/ZimaP/fireplace-bookcases-3d/actions/runs/29972350061) completed its verify/build, artifact upload, and deployment jobs successfully against that exact commit.
@@ -159,7 +165,7 @@ Door swings, hardware clearances, electrical outlets, switches, HVAC/radiators, 
 ## Publication state
 
 - Public URL: `https://zimap.github.io/fireplace-bookcases-3d/`.
-- Implementation pull request: `https://github.com/ZimaP/fireplace-bookcases-3d/pull/6`.
-- Published merge commit: `6e41d1a0f8f1e4ca06504429e5a62f9913edea6e`.
-- Verified GitHub Pages workflow: `https://github.com/ZimaP/fireplace-bookcases-3d/actions/runs/29972350061`.
-- Live verification completed successfully as described above.
+- Implementation pull request: `https://github.com/ZimaP/fireplace-bookcases-3d/pull/8`.
+- Published planner commit: `dcc675d5ed8d4996cf44081fe68d35e84c0dc851`.
+- Verified GitHub Pages workflow: `https://github.com/ZimaP/fireplace-bookcases-3d/actions/runs/30061055491`.
+- Live verification completed successfully on 2026-07-23 as described above.
