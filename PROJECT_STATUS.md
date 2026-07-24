@@ -1,14 +1,47 @@
 # Project status — Fireplace Bookcases 3D
 
-**Last updated:** 2026-07-22
+**Last updated:** 2026-07-23
 
-**Project stage:** Ten-layout desktop catalog released and live-verified on GitHub Pages
+**Project stage:** Four-step homeowner planner implemented and locally verified; publication pending
 
 **Published branch:** `main`
+
+**Working branch:** `agent/homeowner-planner-ux`
 
 **Target repository:** `ZimaP/fireplace-bookcases-3d`
 
 **Target public site:** `https://zimap.github.io/fireplace-bookcases-3d/`
+
+## Homeowner planner UX refresh — local verification
+
+- The customer journey is now four plain-language steps: **Choose your bookcase**, **Match your room**, **Measure your space**, and **Make it yours**.
+- The Design step truthfully presents one available family, **Classic Shaker built-in**, while leaving a clear pattern for future fully modeled design families.
+- The Room step uses the existing ten-scenario modal catalog and shows a placement question only where a scenario has more than one valid position.
+- The Measure step promotes only the dimensions relevant to the active layout, including ceiling height and finished bookcase height. Optional room values remain collapsed.
+- Window and door widths are explicitly entered as clear opening widths without trim because the room model adds its separate 3-inch casing.
+- Number fields apply after the customer leaves the field or presses Enter, avoiding mid-entry clamping. Committed room measurements and placement changes fit active bookcase widths to the selected opening; **Build my bookcase** repeats the fit before advancing.
+- The Finish step adds four cabinet colors—Warm white, Pure white, Soft gray, and Deep green—plus a plain-language review card, share action, and image save action.
+- Detailed bookcase, fireplace, installation, room/display, and reference controls remain available under optional **Fine-tune your design** groups.
+- The top toolbar is reduced to **3D room**, **Front**, **More views**, **Start over**, **Share**, and **Save image**. Reset now requires confirmation.
+- Placement and finish choices support radio-group arrow-key navigation with focus restoration after a model rebuild. Status and warning regions announce changes without exposing raw construction jargon.
+- Duplicate structural warnings are collapsed into one customer-facing design note, while detailed construction logic remains unchanged.
+- The Deep green material was lightened for readable face-frame, shelf, and door detail. This is a presentation finish, not a fabrication specification.
+- No drawing-controlled construction thickness, shelf-span rule, or fixed material value changed in this UX task.
+
+Local verification completed on 2026-07-23:
+
+- `npm ci` completed successfully from the committed lockfile.
+- `npm run verify` passed: 4 test files and all 151 tests, TypeScript checking, and the Vite production build.
+- A 1440 × 900 browser review covered all four customer steps, the grouped ten-room catalog, doorway placement and measurement flow, the four finish choices, hero and front cameras, part inspection, URL sharing, reset confirmation, and image-export feedback.
+- Geometry reviews covered minimum and maximum practical widths, a near-full-wall fit, and a clear shelf span above 36 inches with the required support warning.
+- Responsive checks covered 1280 × 800 and 1100 × 720 desktop layouts; the unsupported-width notice appears at 1023 × 720.
+- Keyboard review covered placement and finish radio groups. Slow numeric entry remains stable until commit, and the visible finished-height field reflects safety clamping.
+- Browser review showed active WebGL rendering and no console warnings or errors.
+- Current review images are `docs/homeowner-planner-design.png`, `docs/homeowner-planner-room-catalog.png`, `docs/homeowner-planner-measure.png`, `docs/homeowner-planner-finish.png`, and `docs/homeowner-planner-support-warning.png`, each captured at 1440 × 900.
+- `git diff --check` passed.
+- The Vite build continues to emit only the known non-blocking advisory for the minified Three.js bundle exceeding 500 kB.
+
+This refresh has not been published. The public site and publication records below describe the preceding ten-layout release on `main`.
 
 ## Source basis and catalog distinction
 
@@ -120,8 +153,8 @@ Door swings, hardware clearances, electrical outlets, switches, HVAC/radiators, 
 - Replace every room/opening study default with customer or field dimensions before treating a fit result as fabrication information.
 - Any clear shelf span above 36 inches remains intentionally visible with a support warning and requires an engineered support detail.
 - Vite reports a non-blocking advisory for the minified Three.js bundle exceeding 500 kB.
-- After this layout-catalog phase is accepted, the next product task should be a guided customer measurement/photo-capture flow: identify the chosen wall, collect wall width/height/depth and obstacle dimensions, validate missing values, and distinguish estimated from verified measurements.
-- Selectable bookcase design families can follow that measurement work. Do not add them to the present catalog branch.
+- Extend the current numeric Measure step into a verified survey workflow with photo upload, obstacle capture, missing-value validation, and an explicit estimated-versus-field-verified status.
+- Add selectable bookcase design families only after each family has its own approved geometry, construction logic, thumbnail, copy, and verification coverage.
 
 ## Publication state
 

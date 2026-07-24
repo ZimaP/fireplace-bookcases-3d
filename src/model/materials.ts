@@ -31,7 +31,7 @@ const CABINET_COLORS: Record<CabinetFinish, number> = {
   'warm-white': 0xe2ddd3,
   'pure-white': 0xf0f0ed,
   'soft-gray': 0xbfc1bd,
-  'deep-green': 0x243a31,
+  'deep-green': 0x3b6954,
 };
 
 const FLOOR_BASE: Record<FloorFinish, string> = {
@@ -67,11 +67,11 @@ export function createMaterialLibrary(
       clearcoatRoughness: 0.62,
     }),
     cabinetShadow: new THREE.MeshStandardMaterial({
-      color: shadeColor(cabinetColor, cabinetFinish === 'deep-green' ? 0.6 : 0.73),
+      color: shadeColor(cabinetColor, cabinetFinish === 'deep-green' ? 0.72 : 0.73),
       roughness: 0.75,
     }),
     interiorBack: new THREE.MeshStandardMaterial({
-      color: shadeColor(cabinetColor, cabinetFinish === 'deep-green' ? 0.75 : 0.84),
+      color: shadeColor(cabinetColor, 0.84),
       map: cabinetTexture,
       roughness: 0.68,
     }),

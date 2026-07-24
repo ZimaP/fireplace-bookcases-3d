@@ -1,4 +1,5 @@
 import './styles.css';
+import './customer-experience.css';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
@@ -19,6 +20,7 @@ import type { PartMetadata } from './model/primitives';
 import {
   copyShareUrl,
   createAppUi,
+  getCustomerWarnings,
   type PartDisplay,
   type ViewPreset,
 } from './ui/controls';
@@ -88,8 +90,8 @@ const ui = createAppUi(app, config, {
       setViewPreset('hero');
       const layoutOption = getRoomLayoutOption(next.roomLayout);
       flashStatus(layoutOption.sourceKind === 'owner-reference'
-        ? `${layoutOption.label} loaded from the supplied room reference.`
-        : `${layoutOption.label} loaded as an editable common-room study.`);
+        ? `${layoutOption.label} is ready. Add your room measurements next.`
+        : `${layoutOption.label} is ready as an editable planning layout.`);
       return;
     }
     scheduleRebuild(next);
@@ -99,18 +101,18 @@ const ui = createAppUi(app, config, {
     config = copyConfig(DEFAULT_CONFIG);
     rebuildNow(config, true);
     setViewPreset('hero');
-    flashStatus('Model reset to the drawing-based starting dimensions.');
+    flashStatus('Planner reset. Start with the bookcase style you like.');
   },
   onFitPlacement: () => {
     const next = fitBookcasesToSelectedOpening(config);
     rebuildNow(next, true);
-    flashStatus('Bookcase fitted to the selected opening; fixed construction was preserved.');
+    flashStatus('Your bookcase was built to fit the selected opening.');
   },
   onSaveImage: () => saveCurrentView(),
   onCopyLink: async () => {
     try {
       await copyShareUrl(config);
-      flashStatus('Share link copied with the current dimensions.');
+      flashStatus('Share link copied with your current design.');
     } catch {
       flashStatus('The browser blocked clipboard access; copy the URL from the address bar.');
     }
@@ -232,7 +234,7 @@ renderer.setAnimationLoop(() => {
 function scheduleRebuild(next: ModelConfig): void {
   config = clampConfig(next);
   cancelStatusReset();
-  ui.setStatus('Updating parametric geometry…');
+  ui.setStatus('Updating your 3D preview…');
   if (rebuildTimer !== null) window.clearTimeout(rebuildTimer);
   rebuildTimer = window.setTimeout(() => {
     rebuildTimer = null;
@@ -528,7 +530,7 @@ function saveCurrentView(): void {
     link.click();
     link.remove();
     URL.revokeObjectURL(objectUrl);
-    flashStatus('High-resolution 3D view saved as PNG.');
+    flashStatus('Your design image was saved.');
   }, 'image/png');
 }
 
@@ -548,9 +550,10 @@ function cancelStatusReset(): void {
 }
 
 function getModelStatus(): string {
-  if (!assembly) return 'Model ready';
-  const warningCount = assembly.derived.structuralWarnings.length;
-  return `${countPickableParts(assembly.root).toLocaleString()} detailed parts · ${warningCount === 0 ? 'drawing logic OK' : `${warningCount} design check${warningCount === 1 ? '' : 's'}`}`;
+  if (!assembly) return 'Your preview is ready';
+  const warningCount = getCustomerWarnings(assembly.derived).length;
+  const roomName = getRoomLayoutOption(config.roomLayout).label;
+  return `${roomName} preview ready · ${warningCount === 0 ? 'fit looks good' : `${warningCount} item${warningCount === 1 ? '' : 's'} to review`}`;
 }
 
 function clearActiveViewPreset(): void {

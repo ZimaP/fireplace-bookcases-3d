@@ -4,7 +4,7 @@
 
 This repository contains only the supplied room-layout and fireplace-bookcase study plus generated catalog planning scenarios created within this standalone project. It does not inherit code, components, naming, layouts, or assets from any earlier project. The model is procedural Three.js geometry rebuilt from a single parameter state.
 
-The present product concept is a desktop room-recognition workflow: a customer chooses the room condition closest to their home, chooses a valid bookcase position, and fits the same detailed bookcase generator into that opening. Alternative bookcase styles are a future phase and are not part of the ten-layout catalog work.
+The present product concept is a four-step desktop homeowner planner: choose a bookcase design, match it to the closest room condition and valid placement, enter the measurements that control its fit, then choose a finish and review/share/save the result. The only current design family is the **Classic Shaker built-in**, and every room uses the same detailed construction generator. Alternative bookcase styles remain a future phase.
 
 ## Coordinate system and units
 
@@ -20,13 +20,15 @@ The catalog deliberately distinguishes two source classes:
 - **Owner-reference scenarios:** fireplace wall, straight wall, centered-window wall, center niche, and deep/offset alcove. Their spatial compositions are interpretations of the supplied room images. Dimensions not explicitly labeled in those images remain editable assumptions.
 - **Catalog-study scenarios:** doorway wall, offset-window wall, double-window wall, media wall, and side nook. These are generated planning archetypes without owner-reference images. They are labeled **Common scenario** in the interface and must be replaced with customer measurements/photos before approval.
 
+Owner-reference scenarios are labeled **Supplied** in the interface. Those labels identify source provenance; they do not make an unlabeled dimension field-verified.
+
 General design precedent recognizes walls, windows, doors, alcoves, and other overlooked areas as useful built-in locations; see [This Old House: Bookcase Basics](https://www.thisoldhouse.com/moving/bookcase-basics) and [7 Surprising Built-In Bookcase Designs](https://www.thisoldhouse.com/furniture/7-surprising-built-in-bookcase-designs). These sources support the scenario taxonomy only. They do not control geometry, appearance, construction, or dimensions in this project.
 
 ## Room scenarios and installation targets
 
 The same cabinet generator is placed into ten selectable room studies:
 
-| Scenario | Placement targets | Opening used by place-and-fit |
+| Scenario | Placement targets | Opening used by automatic fit |
 |---|---|---|
 | Fireplace wall | Pair flanking fireplace | Left and right spans between the chimney gap and side walls |
 | Straight wall | Left, centered, or right | Editable wall study span anchored at the chosen position |
@@ -39,24 +41,24 @@ The same cabinet generator is placed into ten selectable room studies:
 | Media wall | Left of media zone, right of media zone, or both | Side spans outside the reserved centered media datum |
 | Side nook | Nook at left or nook at right | Selected recessed side opening |
 
-Changing the scenario applies its environment defaults, normalizes the placement target, and preserves shared bookcase and presentation preferences. **Place & fit bookcase** changes only each active bookcase's overall width, rounding down to the nearest 1/8 inch so geometry does not exceed the target opening. The drawing-controlled construction values below remain unchanged.
+Changing the scenario applies its environment defaults, normalizes the placement target, preserves shared bookcase and presentation preferences, and re-fits the active bookcase or pair. Changing placement also re-runs the fit. In the Measure step, a numeric field is committed when the customer leaves it or presses Enter; the planner then clamps dependent values and fits each active overall width down to the nearest 1/8 inch so geometry does not exceed the target opening. The **Build my bookcase** action repeats that fit before the Finish step. The drawing-controlled construction values below remain unchanged.
 
 ## Editable room-study inputs
 
-Shared inputs are room width, depth, and height plus overall bookcase dimensions. Scenario-specific inputs are:
+The Measure step promotes only inputs relevant to the active room. Ceiling height and **Finished bookcase height** are primary inputs for every scenario; bookcase height is constrained to remain at least 1/2 inch below the ceiling. Other shared or secondary room values remain available without crowding the primary measurement list. Scenario-specific inputs are:
 
 - Fireplace wall: chimney width and projection, with detailed fireplace controls retained.
 - Straight wall: available study-span width.
-- Centered-window wall: window width, height, and sill height.
+- Centered-window wall: clear window opening width and height, plus sill height.
 - Center niche: clear width and recess depth.
 - Deep/offset alcove: clear width and modeled depth; these directly define its room envelope.
-- Doorway wall: clear door width, clear height, and horizontal offset from wall center.
-- Offset-window wall: window width, height, sill height, and horizontal offset.
-- Double-window wall: shared window width, height, sill height, and clear casing-to-casing gap.
+- Doorway wall: clear door opening width and height, plus horizontal offset from wall center.
+- Offset-window wall: clear window opening width and height, sill height, and horizontal offset.
+- Double-window wall: shared clear window opening width and height, sill height, and clear casing-to-casing gap.
 - Media wall: reserved media-zone width and height. The dark plane is a room datum only, not a new cabinet or media-center design.
 - Side nook: clear width and recess depth; left/right placement changes which side is recessed.
 
-The 3-inch window and doorway casing widths and 2-1/4-inch presentation frame depth are room-study values, not cabinet construction constants. All scenario dimensions are visual-planning assumptions until field verified.
+Window and door opening dimensions are measured between the opening edges and exclude trim. The model adds its separate 3-inch window/doorway casing and 2-1/4-inch presentation frame depth around those openings; these are room-study values, not cabinet construction constants. All scenario dimensions are visual-planning assumptions until field verified.
 
 ## Bookcase construction
 
@@ -108,16 +110,14 @@ The fireplace-wall scenario alone includes:
 
 ## Desktop interface behavior
 
-- A modal catalog of ten scenario cards grouped as feature walls, simple walls, window walls, and recesses.
-- Recognition prompts phrased as customer-observable room conditions.
-- Visible **Supplied** versus **Common scenario** source badges.
-- A three-step workflow: choose room, choose position, place and fit.
-- Placement choices shown as radio-style buttons with only targets valid for the active scenario.
-- Only the active scenario's room/opening dimensions are exposed.
-- Overall room, bookcase, and fireplace controls remain available where relevant.
+- **Design:** presents the one current **Classic Shaker built-in** family, described as two open upper bays over four lower doors, while preserving a selection pattern for future approved families.
+- **Room:** opens a modal catalog of ten scenario cards grouped as fireplace/media, clear walls/doorways, window walls, and niches/nooks. Recognition prompts use customer-observable conditions, source badges distinguish **Supplied** from **Common scenario**, and radio-style placement choices show only targets valid for the active scenario.
+- **Measure:** promotes the active layout's important fields, including ceiling and finished bookcase height, while optional secondary room dimensions remain collapsed. Window and door openings exclude trim. Committing a field clamps the state and automatically re-fits active bookcase widths; a calculated-fit card reports the available opening and fitted unit sizes.
+- **Finish:** offers Warm white, Pure white, Soft gray, and Deep green cabinet colors; summarizes design, room, placement, overall size, color, and warning status; and provides URL sharing and PNG saving.
+- **Fine-tune your design:** optionally exposes detailed bookcase, fireplace/mantel, installation, room/display, and source/reference groups without putting them in the primary homeowner journey.
 - Automatic clamping where parameters depend on one another.
-- Live clear opening, calculated bay span, shelf thickness, fit result, and design warnings.
-- Hero, front, plan, room, and detail camera views; presentation finishes; part inspection; display toggles; PNG capture; and active-only URL share state.
+- Live clear-opening, fit-result, and plain-language design warnings, with detailed construction data still available through part inspection.
+- Simplified 3D room and front camera buttons plus top, bookcase-detail, opposite-side, and fireplace-detail views under More views; display toggles and active-only URL share state remain available.
 
 ## Current scope boundary
 
@@ -125,4 +125,4 @@ The owner references do not contain a complete dimension schedule for any room s
 
 The paired views identified as IMG_6777 and IMG_6778 are currently interpreted as the deep/offset-alcove reference, but they may be oblique documentation related to IMG_6768; that relationship remains unresolved. Replace study defaults in `src/model/config.ts` when verified information is supplied. Do not change the shared cabinet construction rules merely to force a fit.
 
-Customer measurement capture and selectable bookcase design families are logical future phases, but neither belongs in the current scenario-catalog implementation.
+The current Measure step is a guided numeric preview, not a field-survey workflow. Photo upload, obstacle capture, measurement verification, and selectable bookcase design families remain logical future phases and are not part of the present implementation.

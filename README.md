@@ -1,35 +1,41 @@
-# Fireplace Bookcases — Parametric 3D Catalog
+# Built-in Bookcase Planner — Parametric 3D Catalog
 
-![Ten-layout catalog doorway-room review](docs/layout-catalog-hero.png)
+![Homeowner planner design step](docs/homeowner-planner-design.png)
 
-![Front review of the shared bookcase construction](docs/layout-catalog-front.png)
+![Homeowner planner room catalog](docs/homeowner-planner-room-catalog.png)
 
-![Grouped ten-layout room catalog](docs/layout-catalog-menu.png)
+![Homeowner planner measurement step](docs/homeowner-planner-measure.png)
 
-A completely new, standalone Three.js project for helping a customer identify the room condition closest to their home, choose where a built-in belongs, and fit the shared drawing-based bookcase into that opening. The current desktop catalog contains ten room scenarios: five interpreted from owner-supplied images and five generated planning studies. Room/opening dimensions and cabinet placement are parametric while drawing-derived construction thicknesses remain independent of overall resizing.
+![Homeowner planner finish and review step](docs/homeowner-planner-finish.png)
 
-The images above document the current ten-layout desktop workflow and the unchanged shared bookcase construction.
+A completely new, standalone Three.js project with a guided desktop planner for choosing a built-in, matching it to a room, entering the few measurements that control its fit, and reviewing the result in 3D. The room catalog contains ten scenarios: five interpreted from owner-supplied images and five generated planning studies. Room/opening dimensions and cabinet placement are parametric while drawing-derived construction thicknesses remain independent of overall resizing.
+
+The images above document the current four-step homeowner workflow. They do not indicate that this local UX revision has been deployed.
 
 ## Customer workflow
 
-1. **Choose your room layout** from a grouped card catalog. Each card asks the customer to recognize a physical room condition rather than understand technical cabinet terminology.
-2. **Choose the bookcase position** from the valid targets for that room.
-3. **Place & fit bookcase** to size only the active unit or units to the selected clear opening.
-4. Refine the editable room/opening assumptions and overall bookcase dimensions, then share the URL or export a PNG.
+1. **Design — Choose your bookcase.** The current catalog contains one design family, the **Classic Shaker built-in**, with two open upper bays and four lower cabinet doors. The step is structured so additional approved design families can be added later.
+2. **Room — Match your room.** Choose the closest of ten room scenarios, then choose from only the placement targets valid for that scenario.
+3. **Measure — Measure your space.** Enter the layout-relevant opening dimensions, ceiling height, and finished bookcase height. Window and door opening measurements exclude trim. When a number is committed by leaving its field or pressing Enter, the active bookcase or pair is re-fitted to the selected opening; **Build my bookcase** repeats that fit before advancing.
+4. **Finish — Make it yours.** Choose Warm white, Pure white, Soft gray, or Deep green; review the bookcase, room, placement, size, and fit status; then share the design URL or save a PNG. Optional detailed controls remain under **Fine-tune your design**.
 
 The interface labels owner-image interpretations as **Supplied** and the five generated archetypes as **Common scenario**. Common scenarios are starting points only; they are not field surveys or new owner references.
 
 ## Included in the current catalog work
 
+- A four-step desktop homeowner planner with progress, back navigation, plain-language fit feedback, and reset confirmation.
+- One selectable bookcase design family: **Classic Shaker built-in**. Additional families are not yet modeled.
 - Ten desktop room scenarios grouped as feature walls, simple walls, window walls, and recesses.
-- Layout-specific placement choices and a fit command that rounds active bookcase widths down to the nearest 1/8 inch without exceeding an opening.
+- Layout-specific placement choices and automatic fitting that rounds active bookcase widths down to the nearest 1/8 inch without exceeding an opening.
+- A reduced Measure step that promotes only the active layout's important fields, including finished bookcase height, while keeping secondary room values optional.
+- Four cabinet colors, a final design summary, share/save actions, and optional Fine-tune groups for bookcase, fireplace, installation, room/display, and reference details.
 - One or two detailed bookcases as appropriate to the selected scenario, each retaining two upper bays and four lower Shaker doors.
 - Field-fit filler, plywood backer, face frames, finished backs, toe kick, levelers, lower shelves, fixed transition top, adjustable shelves, shelf-pin rows, hardware, and flat field-fit top filler.
 - Automatic drawing-based shelf stock: 1-inch MDF through 27 inches, 1-1/4-inch MDF over 27 through 31 inches, 1-1/2-inch MDF over 31 through 36 inches, and 1-1/2-inch geometry with a support warning above 36 inches.
 - Layout-aware room shells, lighting, shadows, camera presets, dimension callouts, finish options, part inspection, active-only URL share state, and PNG export.
 - The drawing-based fireplace and mantel remain exclusive to the supplied fireplace-wall scenario.
 
-Alternative bookcase designs are intentionally outside this phase. Every scenario currently uses the same shared construction generator.
+Every scenario currently uses the same shared Classic Shaker construction generator. Alternative bookcase designs remain a future phase.
 
 ## Room scenarios and placement targets
 
@@ -37,16 +43,16 @@ Alternative bookcase designs are intentionally outside this phase. Every scenari
 |---|---|---|---|---|
 | Fireplace wall | Owner-supplied image | Pair flanking fireplace | Paired left/right openings | Chimney width and projection |
 | Straight wall | Owner-supplied image | Centered wall position | Left, center, or right study span | Available wall span |
-| Window wall | Owner-supplied image | Both sides of centered window | Left, right, or both sides | Window width, height, and sill height |
+| Window wall | Owner-supplied image | Both sides of centered window | Left, right, or both sides | Clear window opening width/height excluding trim, and sill height |
 | Center niche | Owner-supplied image | Centered in niche | Center niche opening | Niche clear width and recess depth |
 | Deep/offset alcove | Owner-supplied image pair | Centered on rear wall | Alcove rear wall | Alcove clear width and depth |
-| Doorway wall | Generated catalog study | Both sides of doorway | Left, right, or both sides | Door width, height, and horizontal offset |
-| Offset window wall | Generated catalog study | Both unequal side zones | Left, right, or both sides | Window width, height, sill height, and horizontal offset |
-| Double-window wall | Generated catalog study | Between windows | Between the windows or outside both windows | Window width, height, sill height, and clear trim-to-trim gap |
+| Doorway wall | Generated catalog study | Both sides of doorway | Left, right, or both sides | Clear door opening width/height excluding trim, and horizontal offset |
+| Offset window wall | Generated catalog study | Both unequal side zones | Left, right, or both sides | Clear window opening width/height excluding trim, sill height, and horizontal offset |
+| Double-window wall | Generated catalog study | Between windows | Between the windows or outside both windows | Clear window opening width/height excluding trim, sill height, and clear trim-to-trim gap |
 | Media wall | Generated catalog study | Both sides of media zone | Left, right, or both sides | Reserved media-zone width and height |
 | Side nook | Generated catalog study | Left-side nook | Left or right recessed nook | Nook clear width and recess depth |
 
-Changing scenarios loads that room's study defaults, normalizes its placement target, and preserves shared cabinet/presentation preferences. **Place & fit bookcase** changes active overall widths only. It does not alter fixed cabinet construction values.
+Changing scenarios loads that room's study defaults, normalizes its placement target, preserves shared cabinet/presentation preferences, and re-fits the active bookcase widths. Committing a Measure-step field or changing placement also re-runs the fit. Automatic fitting changes active overall widths only; it does not alter fixed cabinet construction values.
 
 The generated scenarios reflect frequently encountered built-in conditions rather than measured popularity rankings. General precedent includes This Old House guidance on locating built-ins around walls, windows, doors, alcoves, and other overlooked areas: [Bookcase Basics](https://www.thisoldhouse.com/moving/bookcase-basics) and [7 Surprising Built-In Bookcase Designs](https://www.thisoldhouse.com/furniture/7-surprising-built-in-bookcase-designs). Additional small-space and built-in planning context is available from Architectural Digest: [living-room layout guidance](https://www.architecturaldigest.com/story/living-room-furniture-layout-maximizes-small-space) and [built-in bookshelf approaches](https://www.architecturaldigest.com/story/ways-to-hack-built-in-bookshelves). These links support the catalog categories; they do not supply this project's geometry or fabrication dimensions.
 
@@ -85,6 +91,8 @@ The supplied detail establishes construction rules but not a complete overall di
 
 All room, doorway, window, niche, alcove, media-zone, nook, and overall cabinet values above are editable visual-study assumptions rather than field-verified fabrication dimensions.
 
+Window and door opening dimensions exclude trim. The modeled 3-inch casing and 2-1/4-inch frame depth are separate presentation assumptions.
+
 ## Run locally
 
 Node.js 22.12 or newer is required.
@@ -108,14 +116,14 @@ npm run preview
 
 `npm run verify` runs the type check, automated tests, and production build. Vite writes the deployable site to `dist/`.
 
-## GitHub Pages
+## GitHub Pages configuration
 
 The repository includes `.github/workflows/deploy-pages.yml`; pushes to `main` run the full verification chain before publishing through GitHub Pages.
 
 - Repository: [github.com/ZimaP/fireplace-bookcases-3d](https://github.com/ZimaP/fireplace-bookcases-3d)
-- Live site: [zimap.github.io/fireplace-bookcases-3d](https://zimap.github.io/fireplace-bookcases-3d/)
+- Configured Pages target: [zimap.github.io/fireplace-bookcases-3d](https://zimap.github.io/fireplace-bookcases-3d/)
 
-The ten-layout catalog is published and live-browser-verified on GitHub Pages. Verification details are recorded in [`PROJECT_STATUS.md`](PROJECT_STATUS.md).
+This README describes the current local implementation and does not claim that its homeowner-planner revision is deployed. Publication and verification history are recorded separately in [`PROJECT_STATUS.md`](PROJECT_STATUS.md).
 
 ## Source layout
 
@@ -132,7 +140,8 @@ src/
     primitives.ts         Geometry helpers, metadata, edge treatment, cleanup
     sceneBuilder.ts       Complete scene assembly and lighting
   ui/
-    controls.ts           Desktop catalog workflow, dimensions, views, and display controls
+    controls.ts           Four-step homeowner workflow, dimensions, views, and display controls
+  customer-experience.css Homeowner-planner visual layer
 reference/                Owner-supplied drawing and room-layout references
 ```
 
