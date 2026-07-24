@@ -10,6 +10,7 @@ import {
   configToUrl,
   copyConfig,
   DEFAULT_CONFIG,
+  deriveLayout,
   fitBookcasesToSelectedOpening,
   getRoomLayoutOption,
   readConfigFromUrl,
@@ -18,6 +19,7 @@ import {
 import { buildSceneAssembly, type SceneAssembly } from './model/sceneBuilder';
 import type { PartMetadata } from './model/primitives';
 import {
+  copyProjectSummary,
   copyShareUrl,
   createAppUi,
   getCustomerWarnings,
@@ -106,7 +108,7 @@ const ui = createAppUi(app, config, {
   onFitPlacement: () => {
     const next = fitBookcasesToSelectedOpening(config);
     rebuildNow(next, true);
-    flashStatus('Your bookcase was built to fit the selected opening.');
+    flashStatus('Your fitted planning preview is ready to review.');
   },
   onSaveImage: () => saveCurrentView(),
   onCopyLink: async () => {
@@ -115,6 +117,14 @@ const ui = createAppUi(app, config, {
       flashStatus('Share link copied with your current design.');
     } catch {
       flashStatus('The browser blocked clipboard access; copy the URL from the address bar.');
+    }
+  },
+  onCopySummary: async () => {
+    try {
+      await copyProjectSummary(config, deriveLayout(config));
+      flashStatus('Project details copied for your notes or email.');
+    } catch {
+      flashStatus('The browser blocked clipboard access.');
     }
   },
 });
@@ -553,7 +563,7 @@ function getModelStatus(): string {
   if (!assembly) return 'Your preview is ready';
   const warningCount = getCustomerWarnings(assembly.derived).length;
   const roomName = getRoomLayoutOption(config.roomLayout).label;
-  return `${roomName} preview ready · ${warningCount === 0 ? 'fit looks good' : `${warningCount} item${warningCount === 1 ? '' : 's'} to review`}`;
+  return `${roomName} planning preview · ${warningCount === 0 ? 'fits the measurements entered' : `${warningCount} item${warningCount === 1 ? '' : 's'} to review`}`;
 }
 
 function clearActiveViewPreset(): void {

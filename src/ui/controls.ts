@@ -36,6 +36,7 @@ export interface ControlCallbacks {
   onFitPlacement: () => void;
   onSaveImage: () => void;
   onCopyLink: () => void;
+  onCopySummary: () => void;
 }
 
 interface FieldDefinition {
@@ -178,8 +179,6 @@ export function createAppUi(
 
         <div class="top-actions">
           <button type="button" id="reset-model" class="text-button">Start over</button>
-          <button type="button" class="quiet-button" data-action="copy">Share</button>
-          <button type="button" class="primary-button" data-action="save">Save image</button>
         </div>
       </header>
 
@@ -200,12 +199,12 @@ export function createAppUi(
 
         <div id="controls-scroll" class="controls-scroll">
           <section class="wizard-page" data-step-page="1">
-            <p class="page-intro">Start with a bookcase style you love. We will fit it to your room in the next steps.</p>
-            <div class="design-availability">
-              <span>1 style available</span>
-              <small>More design families can be added here later.</small>
+            <p class="page-intro">Start with our current bookcase design. You will match it to your room and measurements next.</p>
+            <div class="section-label design-section-label">
+              <span>Your bookcase design</span>
+              <small>Available now</small>
             </div>
-            <button type="button" class="bookcase-design-card is-selected">
+            <button type="button" class="bookcase-design-card">
               <span class="design-preview" aria-hidden="true">
                 <span class="design-bookcase">
                   <i class="design-crown"></i>
@@ -221,16 +220,15 @@ export function createAppUi(
                 </span>
               </span>
               <span class="design-card-copy">
-                <span class="selected-chip">Selected</span>
                 <strong>Classic Shaker built-in</strong>
                 <small>Two open upper bays with four lower cabinet doors.</small>
                 <span class="design-features"><i>Adjustable shelves</i><i>Closed storage</i></span>
+                <span class="design-card-action">Start with this design <i aria-hidden="true">→</i></span>
               </span>
-              <span class="selection-check" aria-hidden="true">✓</span>
             </button>
             <div class="reassurance-card">
               <span aria-hidden="true">✓</span>
-              <p><strong>Construction stays accurate.</strong> The cabinet is resized using fixed material and shelf-support rules.</p>
+              <p><strong>Construction details stay consistent.</strong> Width and height can change without stretching material thicknesses.</p>
             </div>
           </section>
 
@@ -255,20 +253,27 @@ export function createAppUi(
           </section>
 
           <section class="wizard-page" data-step-page="3" hidden>
-            <p class="page-intro">Enter the few measurements that shape this layout. Estimates are fine for this first preview.</p>
+            <p class="page-intro">Enter the few measurements that shape this layout. You can use an estimate now and replace it later.</p>
+            <fieldset class="measurement-confidence">
+              <legend>How exact are these measurements?</legend>
+              <div class="measurement-confidence-options" role="radiogroup" aria-label="Measurement confidence">
+                <button type="button" data-measurement-confidence="estimated" role="radio" aria-checked="false">
+                  <span class="radio-dot" aria-hidden="true"><i></i></span>
+                  <span><strong>Planning estimate</strong><small>Good for exploring the idea</small></span>
+                </button>
+                <button type="button" data-measurement-confidence="measured" role="radio" aria-checked="false">
+                  <span class="radio-dot" aria-hidden="true"><i></i></span>
+                  <span><strong>Measured by me</strong><small>Entered from a tape measure</small></span>
+                </button>
+              </div>
+            </fieldset>
             <div class="measurement-note">
               <span aria-hidden="true">↔</span>
-              <p><strong>Use inches.</strong> Measure finished surfaces. For window and door openings, do not include the trim.</p>
+              <p><strong>Use inches or a fraction.</strong> You can enter 67.5 or 67 1/2. Measure finished surfaces; do not include window or door trim.</p>
             </div>
-            <div class="field-stack primary-measurement-fields"></div>
-            <details class="secondary-measurements">
-              <summary><span>More room measurements</span><i aria-hidden="true">+</i></summary>
-              <p>Optional details make the room preview more accurate.</p>
-              <div class="field-stack secondary-measurement-fields"></div>
-            </details>
             <div class="derived-readout" aria-live="polite">
               <div class="derived-readout-heading">
-                <span>Your calculated fit</span>
+                <span>Your fitted size</span>
                 <strong data-derived="opening-label">Selected opening</strong>
                 <small><span data-derived="opening-width">—</span> available</small>
               </div>
@@ -285,6 +290,12 @@ export function createAppUi(
                 </div>
               </div>
             </div>
+            <div class="field-stack primary-measurement-fields"></div>
+            <details class="secondary-measurements">
+              <summary><span>More room measurements</span><i aria-hidden="true">+</i></summary>
+              <p>Optional details make the room preview more accurate.</p>
+              <div class="field-stack secondary-measurement-fields"></div>
+            </details>
           </section>
 
           <section class="wizard-page" data-step-page="4" hidden>
@@ -305,7 +316,7 @@ export function createAppUi(
             <div class="review-card" aria-live="polite">
               <div class="review-heading">
                 <span class="review-check" aria-hidden="true">✓</span>
-                <div><strong data-review-status>Your design is ready</strong><small data-review-status-note>It fits the selected opening.</small></div>
+                <div><strong data-review-status>Your planning preview is ready</strong><small data-review-status-note>It fits the measurements entered.</small></div>
               </div>
               <dl>
                 <div><dt>Bookcase</dt><dd>Classic Shaker</dd></div>
@@ -313,15 +324,18 @@ export function createAppUi(
                 <div><dt>Placement</dt><dd data-review-placement>Pair flanking fireplace</dd></div>
                 <div><dt>Overall size</dt><dd data-review-size>—</dd></div>
                 <div><dt>Color</dt><dd data-review-finish>Warm white</dd></div>
+                <div><dt>Measurements</dt><dd data-review-confidence>Planning estimate</dd></div>
               </dl>
+              <p class="review-disclaimer">Planning preview only. Final dimensions and site conditions require field verification before approval.</p>
             </div>
 
             <div class="review-actions">
-              <button type="button" class="quiet-button" data-action="copy">Share design</button>
+              <button type="button" class="quiet-button" data-action="copy">Copy share link</button>
+              <button type="button" class="quiet-button" data-action="copy-summary">Copy project details</button>
             </div>
 
             <details class="fine-tune">
-              <summary><span><strong>Fine-tune your design</strong><small>Optional sizes, room details, and display settings</small></span><i aria-hidden="true">+</i></summary>
+              <summary><span><strong>Advanced details</strong><small>Designer review recommended</small></span><i aria-hidden="true">+</i></summary>
               <div class="fine-tune-content"></div>
             </details>
           </section>
@@ -411,6 +425,7 @@ export function createAppUi(
   const browseLayouts = required<HTMLButtonElement>(root, '.browse-layouts-button');
   const placementSection = required<HTMLElement>(root, '.placement-section');
   const placementChoices = required<HTMLElement>(root, '.placement-choices');
+  const measurementConfidenceOptions = required<HTMLElement>(root, '.measurement-confidence-options');
   const primaryMeasurementFields = required<HTMLElement>(root, '.primary-measurement-fields');
   const secondaryMeasurementFields = required<HTMLElement>(root, '.secondary-measurement-fields');
   const secondaryMeasurements = required<HTMLDetailsElement>(root, '.secondary-measurements');
@@ -420,8 +435,9 @@ export function createAppUi(
   const inputMap = new Map<keyof ModelConfig, HTMLInputElement | HTMLSelectElement>();
   const measurementRows = new Map<keyof ModelConfig, HTMLElement>();
   let currentConfig = { ...initialConfig };
-  let currentStep = 1;
-  let maximumVisitedStep = 1;
+  const opensAtReview = new URLSearchParams(window.location.search).get('step') === 'review';
+  let currentStep = opensAtReview ? 4 : 1;
+  let maximumVisitedStep = opensAtReview ? 4 : 1;
   let catalogOpener: HTMLElement | null = null;
 
   const updateConfig = (
@@ -601,7 +617,6 @@ export function createAppUi(
     group.innerHTML = `
       <div class="catalog-group-heading">
         <div><h3>${category.label}</h3><p>${category.description}</p></div>
-        <span>${options.length}</span>
       </div>
       <div class="catalog-card-grid"></div>
     `;
@@ -611,13 +626,16 @@ export function createAppUi(
       button.type = 'button';
       button.className = 'layout-catalog-card';
       button.dataset.layoutId = option.value;
-      button.setAttribute('aria-label', `Choose ${option.label}`);
+      const titleId = `room-title-${option.value}`;
+      const descriptionId = `room-description-${option.value}`;
+      button.setAttribute('aria-labelledby', titleId);
+      button.setAttribute('aria-describedby', descriptionId);
       button.innerHTML = `
         ${layoutSchematic(option.value)}
         <span class="catalog-card-copy">
           <span class="source-badge ${option.sourceKind === 'owner-reference' ? 'is-supplied' : 'is-study'}">${sourceLabel(option.sourceKind)}</span>
-          <strong>${escapeHtml(option.label)}</strong>
-          <small>${escapeHtml(option.recognitionPrompt)}</small>
+          <strong id="${titleId}">${escapeHtml(option.label)}</strong>
+          <small id="${descriptionId}">${escapeHtml(option.recognitionPrompt)}</small>
         </span>
         <span class="catalog-card-action">Choose this room <i aria-hidden="true">→</i></span>
       `;
@@ -653,6 +671,11 @@ export function createAppUi(
   });
 
   const setActiveStep = (nextStep: number, focusHeading = true): void => {
+    if (nextStep === 3 && currentStep < 3) {
+      const fitted = fitBookcasesToSelectedOpening(currentConfig);
+      currentConfig = fitted;
+      callbacks.onConfigChange(fitted);
+    }
     currentStep = Math.max(1, Math.min(WIZARD_STEPS.length, nextStep));
     maximumVisitedStep = Math.max(maximumVisitedStep, currentStep);
     const step = WIZARD_STEPS[currentStep - 1];
@@ -673,7 +696,7 @@ export function createAppUi(
     wizardBack.hidden = currentStep === 1;
     if (currentStep === 1) wizardPrimary.innerHTML = 'Continue with this style <span aria-hidden="true">→</span>';
     if (currentStep === 2) wizardPrimary.innerHTML = 'Measure my space <span aria-hidden="true">→</span>';
-    if (currentStep === 3) wizardPrimary.innerHTML = 'Build my bookcase <span aria-hidden="true">→</span>';
+    if (currentStep === 3) wizardPrimary.innerHTML = 'Review my design <span aria-hidden="true">→</span>';
     if (currentStep === 4) wizardPrimary.innerHTML = 'Save design image <span aria-hidden="true">↓</span>';
     controlsScroll.scrollTop = 0;
     if (focusHeading) wizardTitle.focus({ preventScroll: true });
@@ -695,6 +718,14 @@ export function createAppUi(
       return;
     }
     if (currentStep === 3) {
+      const invalidMeasurement = root.querySelector<HTMLInputElement>(
+        '[data-step-page="3"] input[aria-invalid="true"]',
+      );
+      if (invalidMeasurement) {
+        invalidMeasurement.closest<HTMLDetailsElement>('details')?.setAttribute('open', '');
+        invalidMeasurement.focus();
+        return;
+      }
       callbacks.onFitPlacement();
       setActiveStep(4);
       return;
@@ -723,6 +754,9 @@ export function createAppUi(
   root.querySelectorAll<HTMLButtonElement>('[data-action="copy"]').forEach((button) => {
     button.addEventListener('click', callbacks.onCopyLink);
   });
+  root.querySelectorAll<HTMLButtonElement>('[data-action="copy-summary"]').forEach((button) => {
+    button.addEventListener('click', callbacks.onCopySummary);
+  });
 
   root.querySelectorAll<HTMLButtonElement>('[data-cabinet-finish]').forEach((button) => {
     button.addEventListener('click', () => {
@@ -734,6 +768,14 @@ export function createAppUi(
   });
   finishPicker.addEventListener('keydown', (event) => {
     handleRadioGroupKeydown(event, finishPicker, '[data-cabinet-finish]');
+  });
+  root.querySelectorAll<HTMLButtonElement>('[data-measurement-confidence]').forEach((button) => {
+    button.addEventListener('click', () => {
+      updateConfig('measurementConfidence', button.dataset.measurementConfidence ?? 'estimated');
+    });
+  });
+  measurementConfidenceOptions.addEventListener('keydown', (event) => {
+    handleRadioGroupKeydown(event, measurementConfidenceOptions, '[data-measurement-confidence]');
   });
 
   const setActiveView = (preset: ViewPreset | null): void => {
@@ -761,6 +803,11 @@ export function createAppUi(
         input.checked = Boolean(value);
       } else {
         input.value = String(value);
+        if (input instanceof HTMLInputElement) {
+          input.removeAttribute('aria-invalid');
+          input.dataset.committedValue = String(value);
+          updateMeasurementConversion(input, Number(value));
+        }
       }
     }
 
@@ -848,6 +895,12 @@ export function createAppUi(
       button.setAttribute('aria-checked', String(selected));
       button.tabIndex = selected ? 0 : -1;
     });
+    root.querySelectorAll<HTMLButtonElement>('[data-measurement-confidence]').forEach((button) => {
+      const selected = button.dataset.measurementConfidence === config.measurementConfidence;
+      button.classList.toggle('is-selected', selected);
+      button.setAttribute('aria-checked', String(selected));
+      button.tabIndex = selected ? 0 : -1;
+    });
 
     updateSourceCards(layoutOption, baseUrl, sourceNote, drawingCard, secondaryReferenceCard);
     updateWarnings(shell.warningPanel, derived);
@@ -910,7 +963,7 @@ export function createAppUi(
     `;
   };
 
-  setActiveStep(1, false);
+  setActiveStep(opensAtReview ? 4 : 1, false);
   sync(initialConfig, deriveLayout(initialConfig));
 
   return {
@@ -924,19 +977,58 @@ export function createAppUi(
 }
 
 function layoutSchematic(layoutId: RoomLayoutId): string {
-  const parts: Record<string, string> = {
-    'fireplace-wall': '<i class="sch-case sch-left"></i><i class="sch-fireplace"></i><i class="sch-case sch-right"></i>',
-    'straight-wall': '<i class="sch-case sch-center"></i>',
-    'window-wall': '<i class="sch-case sch-left"></i><i class="sch-window sch-center-window"></i><i class="sch-case sch-right"></i>',
-    'center-niche': '<i class="sch-wing sch-left-wing"></i><i class="sch-recess"></i><i class="sch-case sch-center"></i><i class="sch-wing sch-right-wing"></i>',
-    'offset-alcove': '<i class="sch-side sch-side-left"></i><i class="sch-side sch-side-right"></i><i class="sch-case sch-wide"></i>',
-    'door-wall': '<i class="sch-door"></i><i class="sch-case sch-door-side"></i>',
-    'offset-window-wall': '<i class="sch-window sch-offset-window"></i><i class="sch-case sch-window-side"></i>',
-    'double-window-wall': '<i class="sch-window sch-window-one"></i><i class="sch-case sch-window-middle"></i><i class="sch-window sch-window-two"></i>',
-    'media-wall': '<i class="sch-case sch-left"></i><i class="sch-media"></i><i class="sch-case sch-right"></i>',
-    'side-nook': '<i class="sch-side sch-nook-side"></i><i class="sch-recess sch-side-recess"></i><i class="sch-case sch-nook-case"></i>',
+  const parts: Record<RoomLayoutId, string> = {
+    'fireplace-wall': `
+      <span class="room-diagram__cabinet room-diagram__cabinet--left"></span>
+      <span class="room-diagram__fireplace"></span>
+      <span class="room-diagram__cabinet room-diagram__cabinet--right"></span>`,
+    'straight-wall': `
+      <span class="room-diagram__clear-wall"></span>
+      <span class="room-diagram__cabinet room-diagram__cabinet--center"></span>`,
+    'window-wall': `
+      <span class="room-diagram__cabinet room-diagram__cabinet--left"></span>
+      <span class="room-diagram__window room-diagram__window--center"></span>
+      <span class="room-diagram__cabinet room-diagram__cabinet--right"></span>`,
+    'center-niche': `
+      <span class="room-diagram__recess room-diagram__recess--center"></span>
+      <span class="room-diagram__pier room-diagram__pier--left"></span>
+      <span class="room-diagram__pier room-diagram__pier--right"></span>
+      <span class="room-diagram__cabinet room-diagram__cabinet--center"></span>`,
+    'offset-alcove': `
+      <span class="room-diagram__alcove-back"></span>
+      <span class="room-diagram__return room-diagram__return--left"></span>
+      <span class="room-diagram__return room-diagram__return--right"></span>
+      <span class="room-diagram__cabinet room-diagram__cabinet--wide"></span>`,
+    'door-wall': `
+      <span class="room-diagram__cabinet room-diagram__cabinet--left"></span>
+      <span class="room-diagram__door room-diagram__door--center"></span>
+      <span class="room-diagram__cabinet room-diagram__cabinet--right"></span>`,
+    'offset-window-wall': `
+      <span class="room-diagram__cabinet room-diagram__cabinet--left-wide"></span>
+      <span class="room-diagram__window room-diagram__window--offset-right"></span>
+      <span class="room-diagram__cabinet room-diagram__cabinet--right-narrow"></span>`,
+    'double-window-wall': `
+      <span class="room-diagram__window room-diagram__window--left"></span>
+      <span class="room-diagram__cabinet room-diagram__cabinet--center-narrow"></span>
+      <span class="room-diagram__window room-diagram__window--right"></span>`,
+    'media-wall': `
+      <span class="room-diagram__cabinet room-diagram__cabinet--left"></span>
+      <span class="room-diagram__media"></span>
+      <span class="room-diagram__cabinet room-diagram__cabinet--right"></span>`,
+    'side-nook': `
+      <span class="room-diagram__recess room-diagram__recess--left"></span>
+      <span class="room-diagram__return room-diagram__return--nook"></span>
+      <span class="room-diagram__pier room-diagram__pier--right-wide"></span>
+      <span class="room-diagram__cabinet room-diagram__cabinet--nook-left"></span>`,
   };
-  return `<span class="layout-schematic" data-layout-schematic="${escapeHtml(layoutId)}" aria-hidden="true"><span class="schematic-stage"><i class="sch-wall"></i>${parts[layoutId] ?? ''}<i class="sch-floor"></i></span></span>`;
+  return `
+    <span class="room-diagram room-diagram--${escapeHtml(layoutId)}" data-room-diagram="${escapeHtml(layoutId)}" aria-hidden="true">
+      <span class="room-diagram__scene">
+        <span class="room-diagram__wall"></span>
+        ${parts[layoutId]}
+        <span class="room-diagram__floor"></span>
+      </span>
+    </span>`;
 }
 
 function sourceLabel(sourceKind: 'owner-reference' | 'catalog-study'): string {
@@ -1017,18 +1109,50 @@ function createField(
     row.append(checkbox, track);
     input = checkbox;
   } else {
+    const valueColumn = document.createElement('span');
+    valueColumn.className = 'field-value-column';
     const inputWrap = document.createElement('span');
     inputWrap.className = 'number-input-wrap';
     const numberInput = document.createElement('input');
-    numberInput.type = 'number';
-    numberInput.min = String(definition.min ?? '');
-    numberInput.max = String(definition.max ?? '');
-    numberInput.step = String(definition.step ?? 0.125);
+    const acceptsFractions = MEASUREMENT_KEYS.has(definition.key);
+    numberInput.type = acceptsFractions ? 'text' : 'number';
+    if (acceptsFractions) {
+      numberInput.inputMode = 'decimal';
+      numberInput.autocomplete = 'off';
+      numberInput.dataset.minimum = String(definition.min ?? '');
+      numberInput.dataset.maximum = String(definition.max ?? '');
+    } else {
+      numberInput.min = String(definition.min ?? '');
+      numberInput.max = String(definition.max ?? '');
+      numberInput.step = String(definition.step ?? 0.125);
+    }
     numberInput.value = String(config[definition.key]);
-    numberInput.addEventListener('change', () => {
-      const value = numberInput.valueAsNumber;
-      if (Number.isFinite(value)) onChange(definition.key, value);
-    });
+    numberInput.dataset.committedValue = numberInput.value;
+    const commitValue = (): void => {
+      const parsed = acceptsFractions
+        ? parseImperialInput(numberInput.value)
+        : numberInput.valueAsNumber;
+      if (!Number.isFinite(parsed)) {
+        numberInput.setAttribute('aria-invalid', 'true');
+        updateMeasurementConversion(numberInput, Number.NaN, 'Enter a number, such as 67 1/2');
+        return;
+      }
+      numberInput.removeAttribute('aria-invalid');
+      const minimum = definition.min ?? Number.NEGATIVE_INFINITY;
+      const maximum = definition.max ?? Number.POSITIVE_INFINITY;
+      const nextValue = Math.min(maximum, Math.max(minimum, parsed));
+      if (Number(numberInput.dataset.committedValue) === nextValue) return;
+      numberInput.dataset.committedValue = String(nextValue);
+      onChange(definition.key, nextValue);
+    };
+    numberInput.addEventListener('change', commitValue);
+    if (acceptsFractions) numberInput.addEventListener('blur', commitValue);
+    if (acceptsFractions) {
+      numberInput.addEventListener('input', () => {
+        numberInput.removeAttribute('aria-invalid');
+        updateMeasurementConversion(numberInput, parseImperialInput(numberInput.value));
+      });
+    }
     numberInput.addEventListener('keydown', (event) => {
       if (event.key === 'Enter') numberInput.blur();
     });
@@ -1037,7 +1161,17 @@ function createField(
     suffix.className = 'input-suffix';
     suffix.textContent = definition.suffix ?? 'in';
     inputWrap.appendChild(suffix);
-    row.appendChild(inputWrap);
+    valueColumn.appendChild(inputWrap);
+    if (acceptsFractions) {
+      const conversion = document.createElement('small');
+      conversion.className = 'inch-conversion';
+      conversion.id = `measurement-feedback-${String(definition.key)}`;
+      conversion.setAttribute('aria-live', 'off');
+      numberInput.setAttribute('aria-describedby', conversion.id);
+      valueColumn.appendChild(conversion);
+      updateMeasurementConversion(numberInput, Number(config[definition.key]));
+    }
+    row.appendChild(valueColumn);
     input = numberInput;
   }
   return { element: row, input };
@@ -1063,6 +1197,60 @@ function checkboxField(key: keyof ModelConfig, label: string): FieldDefinition {
   return { key, label, type: 'checkbox' };
 }
 
+export function parseImperialInput(rawValue: string): number {
+  const normalized = rawValue
+    .trim()
+    .replaceAll('″', '')
+    .replaceAll('"', '')
+    .replace(/\s*in(?:ches)?\.?$/i, '')
+    .replace(/(\d)\s*-\s*(\d+\s*\/\s*\d+)$/, '$1 $2');
+  if (normalized === '') return Number.NaN;
+  if (/^[+-]?(?:\d+(?:\.\d+)?|\.\d+)$/.test(normalized)) {
+    return Number(normalized);
+  }
+  const match = normalized.match(/^([+-])?(?:(\d+)\s+)?(\d+)\s*\/\s*(\d+)$/);
+  if (!match) return Number.NaN;
+  const denominator = Number(match[4]);
+  if (denominator === 0) return Number.NaN;
+  const sign = match[1] === '-' ? -1 : 1;
+  const whole = Number(match[2] ?? 0);
+  const fraction = Number(match[3]) / denominator;
+  return sign * (whole + fraction);
+}
+
+export function formatFeetAndInches(value: number): string {
+  if (!Number.isFinite(value) || Math.abs(value) < 12) return '';
+  const sign = value < 0 ? '−' : '';
+  const absolute = Math.round(Math.abs(value) * 16) / 16;
+  const feet = Math.floor(absolute / 12);
+  const remainingInches = absolute - feet * 12;
+  const inches = remainingInches < 1 / 32
+    ? ''
+    : ` ${formatInches(remainingInches).replace('″', ' in')}`;
+  return `${sign}${feet} ft${inches}`;
+}
+
+function updateMeasurementConversion(
+  input: HTMLInputElement,
+  value: number,
+  invalidMessage = '',
+): void {
+  const conversion = input.closest<HTMLElement>('.field-value-column')
+    ?.querySelector<HTMLElement>('.inch-conversion');
+  if (!conversion) return;
+  const formatted = formatFeetAndInches(value);
+  conversion.textContent = invalidMessage || formatted || 'Inches';
+  conversion.classList.toggle('is-placeholder', !invalidMessage && !formatted);
+  conversion.classList.toggle('is-error', Boolean(invalidMessage));
+  if (invalidMessage) {
+    conversion.removeAttribute('aria-live');
+    conversion.setAttribute('role', 'alert');
+  } else {
+    conversion.removeAttribute('role');
+    conversion.setAttribute('aria-live', 'off');
+  }
+}
+
 function updateWarnings(panel: HTMLElement, derived: DerivedLayout): void {
   const friendlyWarnings = getCustomerWarnings(derived);
   if (friendlyWarnings.length === 0) {
@@ -1086,7 +1274,10 @@ export function getCustomerWarnings(derived: DerivedLayout): string[] {
 
 function friendlyWarning(warning: string): string {
   if (warning.includes('above the 36')) {
-    return 'This shelf width needs extra support. A designer will confirm the support detail.';
+    return 'This shelf width needs extra support. The support detail must be reviewed before approval.';
+  }
+  if (warning.includes('below the 44″ minimum')) {
+    return 'The selected opening is too narrow for this bookcase. It needs at least 44″ of clear width. Increase the opening or choose another placement.';
   }
   if (warning.includes('exceeds its selected installation opening')) {
     return 'The bookcase is wider than the selected space. Update the measurements, then build it again.';
@@ -1121,9 +1312,13 @@ function updateDerivedReadout(readout: HTMLElement, derived: DerivedLayout): voi
         ? 'Bookcase'
         : placement.sourceSide === 'left' ? 'Left bookcase' : 'Right bookcase';
     required<HTMLElement>(card, `[data-derived="unit-${index}-width"]`).textContent = `${formatInches(placement.width)} wide`;
-    required<HTMLElement>(card, `[data-derived="unit-${index}-note"]`).textContent = supportRequired
-      ? 'Extra shelf support needed'
-      : `Fits within ${formatInches(placement.openingWidth)}`;
+    const doesNotFit = placement.width > placement.openingWidth + 1e-6;
+    required<HTMLElement>(card, `[data-derived="unit-${index}-note"]`).textContent = doesNotFit
+      ? `Needs at least ${formatInches(placement.width)}`
+      : supportRequired
+        ? 'Extra shelf support needed'
+        : `Fits within ${formatInches(placement.openingWidth)}`;
+    card.classList.toggle('does-not-fit', doesNotFit);
   }
 }
 
@@ -1147,6 +1342,8 @@ function updateReviewSummary(
     ? `Left ${formatInches(derived.bookcasePlacements[0].width)} + Right ${formatInches(derived.bookcasePlacements[1].width)} · ${formatInches(config.bookcaseHeight)} H`
     : `${sizes} W × ${formatInches(config.bookcaseHeight)} H`;
   required<HTMLElement>(root, '[data-review-finish]').textContent = finish?.label ?? 'Warm white';
+  required<HTMLElement>(root, '[data-review-confidence]').textContent =
+    config.measurementConfidence === 'measured' ? 'Measured by me' : 'Planning estimate';
 
   const status = required<HTMLElement>(root, '[data-review-status]');
   const note = required<HTMLElement>(root, '[data-review-status-note]');
@@ -1154,10 +1351,10 @@ function updateReviewSummary(
   const warningCount = getCustomerWarnings(derived).length;
   const hasWarnings = warningCount > 0;
   card.classList.toggle('has-warning', hasWarnings);
-  status.textContent = hasWarnings ? 'Your design needs a quick review' : 'Your design is ready';
+  status.textContent = hasWarnings ? 'Your planning preview needs review' : 'Your planning preview is ready';
   note.textContent = hasWarnings
     ? `See ${warningCount === 1 ? 'the design note' : `${warningCount} design notes`} on the 3D preview.`
-    : 'It fits the selected opening.';
+    : 'It fits the measurements entered.';
 }
 
 function friendlyPlacementLabel(layout: RoomLayoutId, label: string): string {
@@ -1219,13 +1416,51 @@ function escapeHtml(value: string): string {
 }
 
 export async function copyShareUrl(config: ModelConfig): Promise<void> {
-  const shareUrl = configToUrl(config);
+  await writeClipboardText(reviewShareUrl(config));
+}
+
+export async function copyProjectSummary(
+  config: ModelConfig,
+  derived: DerivedLayout,
+): Promise<void> {
+  const placement = getPlacementOptions(config.roomLayout).find(
+    (option) => option.value === config.placementTarget,
+  );
+  const finish = FINISH_OPTIONS.find((option) => option.value === config.cabinetFinish);
+  const sizes = derived.bookcasePlacements.length > 1
+    ? `Left ${formatInches(derived.bookcasePlacements[0].width)} W + Right ${formatInches(derived.bookcasePlacements[1].width)} W × ${formatInches(config.bookcaseHeight)} H`
+    : `${formatInches(derived.bookcasePlacements[0]?.width ?? 0)} W × ${formatInches(config.bookcaseHeight)} H`;
+  const warnings = getCustomerWarnings(derived);
+  const summary = [
+    'Built-in Bookcase Planning Preview',
+    '',
+    'Design: Classic Shaker built-in',
+    `Room: ${getRoomLayoutOption(config.roomLayout).label}`,
+    `Placement: ${placement ? friendlyPlacementLabel(config.roomLayout, placement.label) : derived.selectedOpeningLabel}`,
+    `Overall size: ${sizes}`,
+    `Color: ${finish?.label ?? 'Warm white'}`,
+    `Measurements: ${config.measurementConfidence === 'measured' ? 'Measured by me' : 'Planning estimate'}`,
+    warnings.length > 0 ? `Review: ${warnings.join(' ')}` : 'Review: Fits the measurements entered.',
+    '',
+    'Planning preview only. Final dimensions and site conditions require field verification before approval.',
+    `Open design: ${reviewShareUrl(config)}`,
+  ].join('\n');
+  await writeClipboardText(summary);
+}
+
+function reviewShareUrl(config: ModelConfig): string {
+  const url = new URL(configToUrl(config));
+  url.searchParams.set('step', 'review');
+  return url.toString();
+}
+
+async function writeClipboardText(value: string): Promise<void> {
   try {
-    await navigator.clipboard.writeText(shareUrl);
+    await navigator.clipboard.writeText(value);
     return;
   } catch {
     const field = document.createElement('textarea');
-    field.value = shareUrl;
+    field.value = value;
     field.setAttribute('readonly', '');
     field.style.position = 'fixed';
     field.style.opacity = '0';
