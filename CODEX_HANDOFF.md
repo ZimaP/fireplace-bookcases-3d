@@ -18,6 +18,7 @@ Continue the prepared fireplace-bookcase baseline inside one shared GitHub repos
 10. `src/model/room.ts`
 11. `src/main.ts`
 12. `src/ui/controls.ts`
+13. `src/customer-experience.css`
 
 ## Current architecture
 
@@ -30,24 +31,28 @@ Continue the prepared fireplace-bookcase baseline inside one shared GitHub repos
 - `src/model/fireplace.ts`: chimney, surround, mantel, insert, and fire.
 - `src/model/dimensions.ts`: measurement lines and labels.
 - `src/model/sceneBuilder.ts`: complete scene assembly and lighting.
-- `src/ui/controls.ts`: desktop controls and status panels.
+- `src/ui/controls.ts`: four-step homeowner workflow, room catalog, measurement controls, finish selection, status panels, and optional fine-tuning.
+- `src/customer-experience.css`: desktop customer-planner visual layer applied after the baseline application styles.
 
-## First Codex mission
+## Current planner state
 
-Perform an evidence-based takeover audit and deliver a reliable, visually polished v1.
+- The locally verified working branch uses four customer steps: **Design**, **Room**, **Measure**, and **Finish**.
+- One bookcase family is currently available: **Classic Shaker built-in**. Do not imply that future families exist until each has approved geometry and construction logic.
+- The Room step exposes ten scenarios and only the placement choices valid for the selected scenario.
+- The Measure step asks for layout-relevant dimensions plus finished bookcase height. Window and door opening widths exclude trim because the model adds separate casing.
+- Number fields commit on blur or Enter, then active bookcase widths fit to the selected opening. Fixed construction values never scale.
+- The Finish step provides four presentation colors, a design review, sharing, and PNG saving. Detailed model controls remain under **Fine-tune your design**.
+- Review screens are under `docs/homeowner-planner-*.png`. Full local verification is recorded at the top of `PROJECT_STATUS.md`.
+- This UX refresh is not yet published. The public GitHub Pages site still represents the preceding ten-layout release until an exact new commit is deployed and browser-verified.
 
-1. Run `npm ci` and `npm run verify` before editing.
-2. Inspect the two reference images before changing geometry.
-3. Launch the desktop app and review hero/room, front, and plan views near 1440 × 900.
-4. Lock drawing-derived construction thicknesses so ordinary dimension changes cannot alter or scale them.
-5. Derive adjustable shelf thickness automatically from clear span: 1 in through 27 in, 1-1/4 in through 31 in, 1-1/2 in through 36 in, warning above 36 in.
-6. Verify left and right overall widths remain independently editable while both use the same construction formulas.
-7. Test minimum, default, maximum, near-full-wall, and unsupported-shelf-span configurations.
-8. Correct obvious intersections, missing parts, clipping, z-fighting, weak edge definition, bad shelf placement, console errors, URL-state problems, or camera framing.
-9. Improve visual fidelity only where supported by the references or clearly needed for architectural presentation.
-10. Keep the interface desktop-only and secondary to the model viewport.
-11. Save updated review screenshots in `docs/`.
-12. Run `npm run verify` again, update `PROJECT_STATUS.md`, and open a focused PR if the environment supports it.
+## Next Codex mission
+
+1. Run `npm ci` and `npm run verify` before modifying the verified baseline.
+2. Inspect the owner references before changing geometry or construction behavior.
+3. Review the new four-step flow and `docs/homeowner-planner-*.png` with the owner.
+4. If accepted, open a focused pull request that lists the UX changes, unchanged drawing rules, verification results, review screenshots, and remaining measurement assumptions.
+5. After merge, verify the GitHub Pages workflow against the exact commit and open the public model before recording publication.
+6. The next product phase should either extend Measure into a photo/obstacle/verification workflow or add a genuinely modeled second bookcase family. Do not present placeholder cards as available products.
 
 ## Deployment mission
 

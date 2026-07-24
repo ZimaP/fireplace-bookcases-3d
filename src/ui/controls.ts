@@ -1,8 +1,13 @@
-import type { DerivedLayout, ModelConfig, RoomLayoutId } from '../model/config';
+import type {
+  DerivedLayout,
+  ModelConfig,
+  RoomLayoutId,
+} from '../model/config';
 import {
   applyRoomLayoutPreset,
   configToUrl,
   deriveLayout,
+  fitBookcasesToSelectedOpening,
   formatInches,
   getLayoutDimensionKeys,
   getPlacementOptions,
@@ -73,12 +78,73 @@ export interface PartDisplay {
   note?: string;
 }
 
-const LAYOUT_CATEGORIES = [
-  { value: 'feature-walls', label: 'Feature walls', description: 'Rooms organized around a fireplace or media focal point.' },
-  { value: 'simple-walls', label: 'Simple walls', description: 'Open walls, doors, and common furniture-planning conditions.' },
-  { value: 'window-walls', label: 'Window walls', description: 'Single, offset, and paired window arrangements.' },
-  { value: 'recesses', label: 'Recesses & nooks', description: 'Built-ins fitted into niches, alcoves, and side returns.' },
+const WIZARD_STEPS = [
+  { number: 1, shortLabel: 'Design', title: 'Choose your bookcase' },
+  { number: 2, shortLabel: 'Room', title: 'Match your room' },
+  { number: 3, shortLabel: 'Measure', title: 'Measure your space' },
+  { number: 4, shortLabel: 'Finish', title: 'Make it yours' },
 ] as const;
+
+const LAYOUT_CATEGORIES = [
+  { value: 'feature-walls', label: 'Fireplace & media', description: 'A central feature with useful wall space beside it.' },
+  { value: 'simple-walls', label: 'Clear walls & doorways', description: 'An open wall or a wall interrupted by a doorway.' },
+  { value: 'window-walls', label: 'Window walls', description: 'One or two windows with space for a built-in.' },
+  { value: 'recesses', label: 'Niches & nooks', description: 'A recessed area, deep alcove, or side nook.' },
+] as const;
+
+const FINISH_OPTIONS: ReadonlyArray<{
+  value: ModelConfig['cabinetFinish'];
+  label: string;
+  description: string;
+}> = [
+  { value: 'warm-white', label: 'Warm white', description: 'Soft and traditional' },
+  { value: 'pure-white', label: 'Pure white', description: 'Clean and bright' },
+  { value: 'soft-gray', label: 'Soft gray', description: 'Calm and modern' },
+  { value: 'deep-green', label: 'Deep green', description: 'Rich and dramatic' },
+];
+
+const PRIMARY_MEASUREMENT_KEYS: Readonly<Record<RoomLayoutId, readonly (keyof ModelConfig)[]>> = {
+  'fireplace-wall': ['roomWidth', 'roomHeight', 'bookcaseHeight', 'chimneyWidth', 'chimneyDepth'],
+  'straight-wall': ['wallOpeningWidth', 'roomHeight', 'bookcaseHeight'],
+  'window-wall': ['roomWidth', 'windowWidth', 'roomHeight', 'bookcaseHeight'],
+  'center-niche': ['nicheWidth', 'nicheDepth', 'roomHeight', 'bookcaseHeight'],
+  'offset-alcove': ['alcoveOpeningWidth', 'alcoveDepth', 'roomHeight', 'bookcaseHeight'],
+  'door-wall': ['roomWidth', 'doorWidth', 'doorCenterX', 'roomHeight', 'bookcaseHeight'],
+  'offset-window-wall': ['roomWidth', 'windowWidth', 'windowCenterX', 'roomHeight', 'bookcaseHeight'],
+  'double-window-wall': ['roomWidth', 'windowWidth', 'doubleWindowGap', 'roomHeight', 'bookcaseHeight'],
+  'media-wall': ['roomWidth', 'mediaZoneWidth', 'roomHeight', 'bookcaseHeight'],
+  'side-nook': ['sideNookWidth', 'sideNookDepth', 'roomHeight', 'bookcaseHeight'],
+};
+
+const MEASUREMENT_FIELDS: FieldDefinition[] = [
+  numberField('roomWidth', 'Full wall width', 72, 360, 0.25, 'in', 'Measure from wall to wall.'),
+  numberField('roomDepth', 'Room depth', 72, 300, 0.25),
+  numberField('roomHeight', 'Ceiling height', 84, 168, 0.25, 'in', 'Measure from the finished floor to the ceiling.'),
+  numberField('bookcaseHeight', 'Finished bookcase height', 72, 156, 0.125, 'in', 'Enter the overall height you want. It must stay at least 1/2 in below the ceiling.'),
+  numberField('wallOpeningWidth', 'Width available for the bookcase', 44, 180, 0.125),
+  numberField('windowWidth', 'Window opening width (without trim)', 24, 96, 0.125),
+  numberField('windowHeight', 'Window height', 24, 72, 0.125),
+  numberField('windowSillHeight', 'Floor to window sill', 18, 60, 0.125),
+  numberField('windowCenterX', 'Window position (0 = centered)', -48, 48, 0.125, 'in', 'Minus moves it left; plus moves it right.'),
+  numberField('doubleWindowGap', 'Clear space between window trims', 44, 120, 0.125),
+  numberField('nicheWidth', 'Clear niche width', 44, 144, 0.125),
+  numberField('nicheDepth', 'Niche depth', 12, 48, 0.125),
+  numberField('alcoveOpeningWidth', 'Clear alcove width', 44, 108, 0.125),
+  numberField('alcoveDepth', 'Alcove depth', 48, 240, 0.25),
+  numberField('chimneyWidth', 'Fireplace / chimney width', 42, 96, 0.25),
+  numberField('chimneyDepth', 'Fireplace projection from wall', 3, 24, 0.25),
+  numberField('doorWidth', 'Door opening width (without trim)', 28, 72, 0.125),
+  numberField('doorHeight', 'Door opening height', 72, 96, 0.125),
+  numberField('doorCenterX', 'Door position (0 = centered)', -48, 48, 0.125, 'in', 'Minus moves it left; plus moves it right.'),
+  numberField('mediaZoneWidth', 'Width to keep clear for the TV', 48, 120, 0.125),
+  numberField('mediaZoneHeight', 'Height to keep clear for the TV', 32, 72, 0.125),
+  numberField('sideNookWidth', 'Clear nook width', 44, 144, 0.125),
+  numberField('sideNookDepth', 'Nook depth', 12, 48, 0.125),
+];
+
+const MEASUREMENT_KEYS = new Set<keyof ModelConfig>(
+  MEASUREMENT_FIELDS.map((field) => field.key),
+);
 
 export function createAppUi(
   root: HTMLElement,
@@ -91,75 +157,229 @@ export function createAppUi(
         <div class="brand-block">
           <div class="brand-mark" aria-hidden="true"><span></span><span></span><i></i></div>
           <div>
-            <div class="eyebrow">Bookcase planning studio</div>
-            <h1>Bookcase Room Studio</h1>
+            <div class="eyebrow">Built for your room</div>
+            <h1>Built-in Bookcase Planner</h1>
           </div>
         </div>
-        <nav class="view-presets" aria-label="Camera views">
-          <button type="button" data-view="hero" class="active" aria-pressed="true">Perspective</button>
+
+        <nav class="view-presets" aria-label="Preview views">
+          <button type="button" data-view="hero" class="active" aria-pressed="true">3D room</button>
           <button type="button" data-view="front" aria-pressed="false">Front</button>
-          <button type="button" data-view="plan" aria-pressed="false">Plan</button>
-          <button type="button" data-view="left-detail" aria-pressed="false">Left detail</button>
-          <button type="button" data-view="right-detail" aria-pressed="false">Right detail</button>
-          <button type="button" data-view="fireplace" aria-pressed="false">Fireplace</button>
+          <details class="more-views">
+            <summary>More views</summary>
+            <div class="more-views-menu">
+              <button type="button" data-view="plan" aria-pressed="false">Top view</button>
+              <button type="button" data-view="left-detail" aria-pressed="false">Bookcase detail</button>
+              <button type="button" data-view="right-detail" aria-pressed="false">Other side</button>
+              <button type="button" data-view="fireplace" aria-pressed="false">Fireplace detail</button>
+            </div>
+          </details>
         </nav>
+
         <div class="top-actions">
-          <button type="button" id="copy-link" class="quiet-button" title="Copy a shareable URL with the current dimensions">Copy link</button>
-          <button type="button" id="save-image" class="primary-button">Save PNG</button>
+          <button type="button" id="reset-model" class="text-button">Start over</button>
+          <button type="button" class="quiet-button" data-action="copy">Share</button>
+          <button type="button" class="primary-button" data-action="save">Save image</button>
         </div>
       </header>
 
-      <aside class="control-panel" aria-label="Room and bookcase configurator">
+      <aside class="control-panel" aria-label="Guided bookcase planner">
         <div class="panel-heading">
-          <div>
-            <div class="eyebrow">Desktop configurator</div>
-            <h2>Configure your room</h2>
-          </div>
-          <button type="button" id="reset-model" class="icon-button" title="Start over with default dimensions" aria-label="Reset room and bookcase">↺</button>
+          <div class="step-count" data-step-count>Step 1 of 4</div>
+          <h2 data-step-title tabindex="-1">Choose your bookcase</h2>
+          <ol class="wizard-progress" aria-label="Planner progress">
+            ${WIZARD_STEPS.map((step) => `
+              <li>
+                <button type="button" data-step-nav="${step.number}" aria-label="Go to ${step.title}">
+                  <span>${step.number}</span><small>${step.shortLabel}</small>
+                </button>
+              </li>
+            `).join('')}
+          </ol>
         </div>
-        <div id="controls-scroll" class="controls-scroll"></div>
+
+        <div id="controls-scroll" class="controls-scroll">
+          <section class="wizard-page" data-step-page="1">
+            <p class="page-intro">Start with a bookcase style you love. We will fit it to your room in the next steps.</p>
+            <div class="design-availability">
+              <span>1 style available</span>
+              <small>More design families can be added here later.</small>
+            </div>
+            <button type="button" class="bookcase-design-card is-selected">
+              <span class="design-preview" aria-hidden="true">
+                <span class="design-bookcase">
+                  <i class="design-crown"></i>
+                  <i class="design-divider"></i>
+                  <i class="design-shelf shelf-one"></i>
+                  <i class="design-shelf shelf-two"></i>
+                  <i class="design-shelf shelf-three"></i>
+                  <i class="design-counter"></i>
+                  <i class="design-door door-one"></i>
+                  <i class="design-door door-two"></i>
+                  <i class="design-door door-three"></i>
+                  <i class="design-door door-four"></i>
+                </span>
+              </span>
+              <span class="design-card-copy">
+                <span class="selected-chip">Selected</span>
+                <strong>Classic Shaker built-in</strong>
+                <small>Two open upper bays with four lower cabinet doors.</small>
+                <span class="design-features"><i>Adjustable shelves</i><i>Closed storage</i></span>
+              </span>
+              <span class="selection-check" aria-hidden="true">✓</span>
+            </button>
+            <div class="reassurance-card">
+              <span aria-hidden="true">✓</span>
+              <p><strong>Construction stays accurate.</strong> The cabinet is resized using fixed material and shelf-support rules.</p>
+            </div>
+          </section>
+
+          <section class="wizard-page" data-step-page="2" hidden>
+            <p class="page-intro">Choose the wall that feels closest to your room. It does not need to be exact yet.</p>
+            <div class="section-label">
+              <span>Your room</span>
+              <small>Choose the closest match</small>
+            </div>
+            <button type="button" class="selected-layout-card" aria-haspopup="dialog" aria-controls="layout-catalog"></button>
+            <button type="button" class="browse-layouts-button quiet-button" aria-haspopup="dialog" aria-controls="layout-catalog">
+              See all room types
+            </button>
+
+            <div class="placement-section">
+              <div class="section-label">
+                <span>Where should it go?</span>
+                <small>Only positions that work for this room are shown</small>
+              </div>
+              <div class="placement-choices" role="radiogroup" aria-label="Bookcase position"></div>
+            </div>
+          </section>
+
+          <section class="wizard-page" data-step-page="3" hidden>
+            <p class="page-intro">Enter the few measurements that shape this layout. Estimates are fine for this first preview.</p>
+            <div class="measurement-note">
+              <span aria-hidden="true">↔</span>
+              <p><strong>Use inches.</strong> Measure finished surfaces. For window and door openings, do not include the trim.</p>
+            </div>
+            <div class="field-stack primary-measurement-fields"></div>
+            <details class="secondary-measurements">
+              <summary><span>More room measurements</span><i aria-hidden="true">+</i></summary>
+              <p>Optional details make the room preview more accurate.</p>
+              <div class="field-stack secondary-measurement-fields"></div>
+            </details>
+            <div class="derived-readout" aria-live="polite">
+              <div class="derived-readout-heading">
+                <span>Your calculated fit</span>
+                <strong data-derived="opening-label">Selected opening</strong>
+                <small><span data-derived="opening-width">—</span> available</small>
+              </div>
+              <div class="derived-readout-grid">
+                <div data-derived-unit="0">
+                  <span data-derived="unit-0-label">Bookcase</span>
+                  <strong data-derived="unit-0-width">—</strong>
+                  <small data-derived="unit-0-note">Ready to fit</small>
+                </div>
+                <div data-derived-unit="1">
+                  <span data-derived="unit-1-label">Bookcase</span>
+                  <strong data-derived="unit-1-width">—</strong>
+                  <small data-derived="unit-1-note">Ready to fit</small>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="wizard-page" data-step-page="4" hidden>
+            <p class="page-intro">Pick a cabinet color, review the result, and save or share your room design.</p>
+            <div class="section-label">
+              <span>Cabinet color</span>
+              <small>You can change this anytime</small>
+            </div>
+            <div class="finish-picker" role="radiogroup" aria-label="Cabinet color">
+              ${FINISH_OPTIONS.map((finish) => `
+                <button type="button" data-cabinet-finish="${finish.value}" role="radio" aria-checked="false">
+                  <i class="finish-swatch finish-${finish.value}" aria-hidden="true"><span>✓</span></i>
+                  <span><strong>${finish.label}</strong><small>${finish.description}</small></span>
+                </button>
+              `).join('')}
+            </div>
+
+            <div class="review-card" aria-live="polite">
+              <div class="review-heading">
+                <span class="review-check" aria-hidden="true">✓</span>
+                <div><strong data-review-status>Your design is ready</strong><small data-review-status-note>It fits the selected opening.</small></div>
+              </div>
+              <dl>
+                <div><dt>Bookcase</dt><dd>Classic Shaker</dd></div>
+                <div><dt>Room</dt><dd data-review-room>Fireplace wall</dd></div>
+                <div><dt>Placement</dt><dd data-review-placement>Pair flanking fireplace</dd></div>
+                <div><dt>Overall size</dt><dd data-review-size>—</dd></div>
+                <div><dt>Color</dt><dd data-review-finish>Warm white</dd></div>
+              </dl>
+            </div>
+
+            <div class="review-actions">
+              <button type="button" class="quiet-button" data-action="copy">Share design</button>
+            </div>
+
+            <details class="fine-tune">
+              <summary><span><strong>Fine-tune your design</strong><small>Optional sizes, room details, and display settings</small></span><i aria-hidden="true">+</i></summary>
+              <div class="fine-tune-content"></div>
+            </details>
+          </section>
+        </div>
+
+        <footer class="wizard-footer">
+          <button type="button" class="wizard-back text-button">Back</button>
+          <button type="button" class="wizard-primary primary-button">Continue with this style <span aria-hidden="true">→</span></button>
+        </footer>
       </aside>
 
       <main id="viewport" class="viewport">
         <div id="canvas-host" class="canvas-host"></div>
         <div id="overlay-host" class="overlay-host"></div>
         <div class="viewport-vignette" aria-hidden="true"></div>
-        <div class="viewport-help">
-          <span><b>Orbit</b> left-drag</span>
-          <span><b>Pan</b> right-drag</span>
-          <span><b>Zoom</b> wheel</span>
-          <span><b>Inspect</b> click a part</span>
-        </div>
+        <div class="viewport-help">Drag to rotate <i>•</i> Scroll to zoom <i>•</i> Click a cabinet part for details</div>
         <div id="part-inspector" class="part-inspector is-empty">
           <div class="part-kicker">Selected part</div>
           <strong>Select any cabinet component</strong>
           <p>Dimensions, material, and construction notes will appear here.</p>
         </div>
-        <div id="warning-panel" class="warning-panel" hidden></div>
+        <div id="warning-panel" class="warning-panel" role="status" aria-live="polite" hidden></div>
         <div class="viewer-status">
-          <span id="status-text">Building detailed model…</span>
+          <span id="status-text" role="status" aria-live="polite">Preparing your 3D room…</span>
           <span id="fps-text"></span>
         </div>
       </main>
 
       <div id="desktop-blocker" class="desktop-blocker">
         <div>
-          <strong>Desktop model only</strong>
-          <p>This project is intentionally designed for a wide desktop workspace, not a mobile layout.</p>
+          <strong>Open this planner on a wider screen</strong>
+          <p>The detailed 3D room works best on a laptop or desktop.</p>
         </div>
       </div>
 
-      <dialog id="layout-catalog" class="layout-catalog" aria-labelledby="layout-catalog-title">
+      <dialog id="layout-catalog" class="layout-catalog" aria-labelledby="layout-catalog-title" aria-describedby="layout-catalog-description">
         <div class="catalog-dialog-shell">
           <header class="catalog-dialog-header">
             <div>
-              <div class="eyebrow">10 common room scenarios</div>
-              <h2 id="layout-catalog-title">Which room looks most like yours?</h2>
-              <p>Choose the closest starting point. Every measurement can be refined after placement.</p>
+              <div class="eyebrow">Choose a starting point</div>
+              <h2 id="layout-catalog-title">Which wall looks most like yours?</h2>
+              <p id="layout-catalog-description">Pick the closest match. You will add your own measurements next.</p>
             </div>
-            <button type="button" class="catalog-close icon-button" aria-label="Close layout catalog">×</button>
+            <button type="button" class="catalog-close icon-button" aria-label="Close room choices">×</button>
           </header>
           <div class="catalog-scroll" data-catalog-groups></div>
+        </div>
+      </dialog>
+
+      <dialog id="reset-confirm" class="confirm-dialog" aria-labelledby="reset-confirm-title">
+        <div class="confirm-dialog-content">
+          <span class="confirm-icon" aria-hidden="true">↺</span>
+          <h2 id="reset-confirm-title">Start over?</h2>
+          <p>This will return the planner to the original fireplace room and default measurements.</p>
+          <div>
+            <button type="button" class="quiet-button" data-reset-cancel>Keep my design</button>
+            <button type="button" class="primary-button" data-reset-confirm>Start over</button>
+          </div>
         </div>
       </dialog>
     </div>
@@ -179,78 +399,63 @@ export function createAppUi(
   };
 
   const controlsScroll = required<HTMLElement>(root, '#controls-scroll');
+  const wizardTitle = required<HTMLElement>(root, '[data-step-title]');
+  const wizardCount = required<HTMLElement>(root, '[data-step-count]');
+  const wizardBack = required<HTMLButtonElement>(root, '.wizard-back');
+  const wizardPrimary = required<HTMLButtonElement>(root, '.wizard-primary');
   const catalogDialog = required<HTMLDialogElement>(root, '#layout-catalog');
   const catalogGroups = required<HTMLElement>(catalogDialog, '[data-catalog-groups]');
+  const resetDialog = required<HTMLDialogElement>(root, '#reset-confirm');
+  const selectedLayoutCard = required<HTMLButtonElement>(root, '.selected-layout-card');
+  const bookcaseDesignCard = required<HTMLButtonElement>(root, '.bookcase-design-card');
+  const browseLayouts = required<HTMLButtonElement>(root, '.browse-layouts-button');
+  const placementSection = required<HTMLElement>(root, '.placement-section');
+  const placementChoices = required<HTMLElement>(root, '.placement-choices');
+  const primaryMeasurementFields = required<HTMLElement>(root, '.primary-measurement-fields');
+  const secondaryMeasurementFields = required<HTMLElement>(root, '.secondary-measurement-fields');
+  const secondaryMeasurements = required<HTMLDetailsElement>(root, '.secondary-measurements');
+  const finishPicker = required<HTMLElement>(root, '.finish-picker');
+  const fineTuneContent = required<HTMLElement>(root, '.fine-tune-content');
+  const derivedReadout = required<HTMLElement>(root, '.derived-readout');
   const inputMap = new Map<keyof ModelConfig, HTMLInputElement | HTMLSelectElement>();
+  const measurementRows = new Map<keyof ModelConfig, HTMLElement>();
   let currentConfig = { ...initialConfig };
+  let currentStep = 1;
+  let maximumVisitedStep = 1;
   let catalogOpener: HTMLElement | null = null;
 
-  const selectedLayoutCard = document.createElement('button');
-  selectedLayoutCard.type = 'button';
-  selectedLayoutCard.className = 'selected-layout-card';
-  selectedLayoutCard.setAttribute('aria-haspopup', 'dialog');
-  selectedLayoutCard.setAttribute('aria-controls', 'layout-catalog');
+  const updateConfig = (
+    key: keyof ModelConfig,
+    rawValue: string | number | boolean,
+  ): void => {
+    const next = { ...currentConfig };
+    const current = next[key];
+    if (typeof current === 'number') {
+      (next[key] as number) = Number(rawValue);
+    } else if (typeof current === 'boolean') {
+      (next[key] as boolean) = Boolean(rawValue);
+    } else {
+      (next[key] as string) = String(rawValue);
+    }
+    const fittedNext = MEASUREMENT_KEYS.has(key)
+      ? fitBookcasesToSelectedOpening(next)
+      : next;
+    currentConfig = fittedNext;
+    callbacks.onConfigChange(fittedNext);
+  };
 
-  const layoutStep = document.createElement('section');
-  layoutStep.className = 'workflow-step layout-step';
-  layoutStep.innerHTML = stepHeading('1', 'Choose your room layout', 'Pick the closest match; exact dimensions come next.');
-  layoutStep.appendChild(selectedLayoutCard);
-  const browseLayouts = document.createElement('button');
-  browseLayouts.type = 'button';
-  browseLayouts.className = 'browse-layouts-button quiet-button';
-  browseLayouts.textContent = `Browse ${ROOM_LAYOUT_OPTIONS.length} layouts`;
-  browseLayouts.setAttribute('aria-haspopup', 'dialog');
-  browseLayouts.setAttribute('aria-controls', 'layout-catalog');
-  layoutStep.appendChild(browseLayouts);
-  controlsScroll.appendChild(layoutStep);
+  for (const definition of MEASUREMENT_FIELDS) {
+    const row = createField(definition, currentConfig, updateConfig);
+    row.element.dataset.fieldKey = String(definition.key);
+    inputMap.set(definition.key, row.input);
+    measurementRows.set(definition.key, row.element);
+    primaryMeasurementFields.appendChild(row.element);
+  }
 
-  const placementStep = document.createElement('section');
-  placementStep.className = 'workflow-step placement-step';
-  placementStep.innerHTML = stepHeading('2', 'Choose the bookcase position', 'Select where the built-in belongs in this room.');
-  const placementChoices = document.createElement('div');
-  placementChoices.className = 'placement-choices';
-  placementChoices.setAttribute('role', 'radiogroup');
-  placementChoices.setAttribute('aria-label', 'Bookcase position');
-  placementStep.appendChild(placementChoices);
-  controlsScroll.appendChild(placementStep);
-
-  const fitCard = document.createElement('section');
-  fitCard.className = 'workflow-step fit-step';
-  fitCard.innerHTML = `
-    <div class="step-heading compact-step-heading">
-      <span class="step-number">3</span>
-      <div><h3>Place the bookcase</h3><p>Automatically size it to the selected opening.</p></div>
-    </div>
-    <button type="button" id="fit-placement" class="place-fit-button primary-button">
-      <span>Place &amp; fit bookcase</span><i aria-hidden="true">→</i>
-    </button>
-    <small>Fixed cabinet construction thicknesses never scale.</small>
-  `;
-  controlsScroll.appendChild(fitCard);
-
-  const openingFields: FieldDefinition[] = [
-    numberField('wallOpeningWidth', 'Available wall span', 44, 180, 0.125),
-    numberField('windowWidth', 'Window width', 24, 96, 0.125),
-    numberField('windowHeight', 'Window height', 24, 72, 0.125),
-    numberField('windowSillHeight', 'Window sill height', 18, 60, 0.125),
-    numberField('windowCenterX', 'Window offset from center', -48, 48, 0.125),
-    numberField('doubleWindowGap', 'Clear gap between casings', 44, 120, 0.125),
-    numberField('nicheWidth', 'Niche clear width', 44, 144, 0.125),
-    numberField('nicheDepth', 'Niche recess depth', 12, 48, 0.125),
-    numberField('alcoveOpeningWidth', 'Alcove clear width', 44, 108, 0.125),
-    numberField('alcoveDepth', 'Alcove depth', 48, 240, 0.25),
-    numberField('chimneyWidth', 'Chimney width', 42, 96, 0.25),
-    numberField('chimneyDepth', 'Chimney projection', 3, 24, 0.25),
-    numberField('doorWidth', 'Door opening width', 28, 72, 0.125),
-    numberField('doorHeight', 'Door opening height', 72, 96, 0.125),
-    numberField('doorCenterX', 'Door offset from center', -48, 48, 0.125),
-    numberField('mediaZoneWidth', 'Media zone width', 48, 120, 0.125),
-    numberField('mediaZoneHeight', 'Media zone height', 32, 72, 0.125),
-    numberField('sideNookWidth', 'Nook clear width', 44, 144, 0.125),
-    numberField('sideNookDepth', 'Nook recess depth', 12, 48, 0.125),
-  ];
-
-  const appendFieldGroup = (definition: FieldGroupDefinition): HTMLElement => {
+  const appendFieldGroup = (
+    definition: FieldGroupDefinition,
+    parent: HTMLElement,
+  ): HTMLElement => {
     const section = document.createElement(definition.advanced ? 'details' : 'section');
     section.className = definition.advanced ? 'control-group advanced-group' : 'control-group';
     if (definition.className) section.classList.add(definition.className);
@@ -269,90 +474,36 @@ export function createAppUi(
     const fields = document.createElement('div');
     fields.className = 'field-stack';
     for (const fieldDefinition of definition.fields) {
-      const row = createField(fieldDefinition, currentConfig, (key, rawValue) => {
-        const next = { ...currentConfig };
-        const current = next[key];
-        if (typeof current === 'number') {
-          (next[key] as number) = Number(rawValue);
-        } else if (typeof current === 'boolean') {
-          (next[key] as boolean) = Boolean(rawValue);
-        } else {
-          (next[key] as string) = String(rawValue);
-        }
-        currentConfig = next;
-        callbacks.onConfigChange(next);
-      });
+      const row = createField(fieldDefinition, currentConfig, updateConfig);
       row.element.dataset.fieldKey = String(fieldDefinition.key);
       inputMap.set(fieldDefinition.key, row.input);
       fields.appendChild(row.element);
     }
     section.appendChild(fields);
-    controlsScroll.appendChild(section);
+    parent.appendChild(section);
     return section;
   };
 
   appendFieldGroup({
-    id: 'opening',
-    title: 'Opening measurements',
-    subtitle: 'Only measurements relevant to this room are shown',
-    fields: openingFields,
-    className: 'opening-measurements',
-  });
-
-  appendFieldGroup({
-    id: 'room-more',
-    title: 'More room measurements',
-    subtitle: 'Overall room envelope for the 3D view',
-    advanced: true,
-    fields: [
-      numberField('roomWidth', 'Room width', 72, 360, 0.25),
-      numberField('roomDepth', 'Room depth', 72, 300, 0.25),
-      numberField('roomHeight', 'Ceiling height', 84, 168, 0.25),
-    ],
-  });
-
-  appendFieldGroup({
     id: 'bookcases',
-    title: 'Bookcase dimensions',
-    subtitle: 'Adjust the result while drawing-controlled construction stays fixed',
+    title: 'Bookcase size',
+    subtitle: 'Optional adjustments after the automatic fit',
+    advanced: true,
     fields: [
       numberField('leftBookcaseWidth', 'Left overall width', 44, 180, 0.125),
       numberField('rightBookcaseWidth', 'Right overall width', 44, 180, 0.125),
-      numberField('bookcaseHeight', 'Overall height', 72, 156, 0.125),
       numberField('upperDepth', 'Upper depth', 10, 22, 0.125),
       numberField('baseDepth', 'Base depth', 16, 30, 0.125),
       numberField('baseHeight', 'Base cabinet height', 24, 42, 0.125),
       numberField('shelfCount', 'Shelves per bay', 2, 8, 1, ''),
     ],
-  });
-
-  const derivedReadout = document.createElement('div');
-  derivedReadout.className = 'derived-readout';
-  derivedReadout.setAttribute('aria-live', 'polite');
-  derivedReadout.innerHTML = `
-    <div class="derived-readout-heading">
-      <strong data-derived="opening-label">Selected opening</strong>
-      <small><span data-derived="opening-width">—</span> clear</small>
-    </div>
-    <div class="derived-readout-grid">
-      <div data-derived-unit="0">
-        <span data-derived="unit-0-label">Bookcase</span>
-        <strong data-derived="unit-0-span">—</strong>
-        <small data-derived="unit-0-shelf">Shelf —</small>
-      </div>
-      <div data-derived-unit="1">
-        <span data-derived="unit-1-label">Bookcase</span>
-        <strong data-derived="unit-1-span">—</strong>
-        <small data-derived="unit-1-shelf">Shelf —</small>
-      </div>
-    </div>
-  `;
-  controlsScroll.appendChild(derivedReadout);
+  }, fineTuneContent);
 
   appendFieldGroup({
     id: 'fireplace',
     title: 'Fireplace & mantel',
-    subtitle: 'Classical mantel from the supplied millwork elevation',
+    subtitle: 'Detailed fireplace presentation sizes',
+    advanced: true,
     fields: [
       numberField('fireplaceOpeningWidth', 'Firebox opening width', 24, 60, 0.125),
       numberField('fireplaceOpeningHeight', 'Firebox opening height', 18, 42, 0.125),
@@ -362,51 +513,47 @@ export function createAppUi(
       numberField('hearthWidth', 'Hearth width', 42, 96, 0.125),
       numberField('hearthDepth', 'Hearth projection', 10, 30, 0.125),
     ],
-  });
+  }, fineTuneContent);
 
   appendFieldGroup({
     id: 'installation',
     title: 'Installation details',
-    subtitle: 'Field-fit values; fixed cabinet construction is protected',
+    subtitle: 'Field-fit values for a designer or installer',
     advanced: true,
     fields: [
       numberField('sideFiller', 'Side filler / scribe', 0.75, 8, 0.125),
-      numberField('crownHeight', 'Crown height', 1.5, 8, 0.125),
-      numberField('crownProjection', 'Crown projection', 0.5, 4, 0.125),
+      numberField('crownHeight', 'Top filler height', 1.5, 8, 0.125),
+      numberField('crownProjection', 'Top filler projection', 0.5, 4, 0.125),
       numberField('toeKickHeight', 'Toe-kick height', 2.5, 6, 0.125),
       numberField('toeKickRecess', 'Toe-kick recess', 1, 5, 0.125),
-      numberField('centerGap', 'Gap at chimney', 0, 8, 0.125),
+      numberField('centerGap', 'Clearance at center feature', 0, 8, 0.125),
     ],
-  });
+  }, fineTuneContent);
 
   appendFieldGroup({
-    id: 'finish',
-    title: 'Finish & visibility',
+    id: 'appearance',
+    title: 'Room & display',
+    subtitle: 'Floor color and optional model details',
+    advanced: true,
     fields: [
-      selectField('cabinetFinish', 'Cabinet finish', [
-        { value: 'warm-white', label: 'Warm white' },
-        { value: 'pure-white', label: 'Pure white' },
-        { value: 'soft-gray', label: 'Soft gray' },
-        { value: 'deep-green', label: 'Deep green' },
-      ]),
       selectField('floorFinish', 'Floor finish', [
         { value: 'natural-oak', label: 'Natural oak' },
         { value: 'white-oak', label: 'White oak' },
         { value: 'walnut', label: 'Walnut' },
       ]),
-      checkboxField('showDimensions', 'Show 3D dimensions'),
-      checkboxField('showPinHoles', 'Show 5 mm pin holes'),
+      checkboxField('showDimensions', 'Show measurements in 3D'),
       checkboxField('showHardware', 'Show cabinet hardware'),
-      checkboxField('showFire', 'Animate electric fire'),
-      checkboxField('showRoom', 'Show room shell'),
-      checkboxField('showCeiling', 'Show ceiling'),
+      checkboxField('showPinHoles', 'Show shelf-pin holes'),
+      checkboxField('showFire', 'Animate the electric fire'),
+      checkboxField('showRoom', 'Show the room'),
+      checkboxField('showCeiling', 'Show the ceiling'),
     ],
-  });
+  }, fineTuneContent);
 
   const sourcesSection = document.createElement('details');
   sourcesSection.className = 'control-group advanced-group sources-group';
   sourcesSection.innerHTML = `
-    <summary><span><strong>Source &amp; assumptions</strong><small>Room reference and model basis</small></span><i aria-hidden="true">+</i></summary>
+    <summary><span><strong>References &amp; assumptions</strong><small>Room image and construction basis</small></span><i aria-hidden="true">+</i></summary>
     <div class="source-content">
       <div class="source-note" data-source-note></div>
       <a class="reference-card room-reference-card" target="_blank" rel="noreferrer">
@@ -425,7 +572,7 @@ export function createAppUi(
       </a>
     </div>
   `;
-  controlsScroll.appendChild(sourcesSection);
+  fineTuneContent.appendChild(sourcesSection);
 
   const sourceNote = required<HTMLElement>(sourcesSection, '[data-source-note]');
   const drawingCard = required<HTMLAnchorElement>(sourcesSection, '.room-reference-card');
@@ -435,14 +582,15 @@ export function createAppUi(
   millworkCard.href = `${baseUrl}reference/bookcase-detail-drawing.png`;
 
   const chooseRoomLayout = (layoutId: RoomLayoutId): void => {
-    if (layoutId === currentConfig.roomLayout) {
-      if (catalogDialog.open) catalogDialog.close('unchanged');
-      return;
+    if (layoutId !== currentConfig.roomLayout) {
+      const next = fitBookcasesToSelectedOpening(
+        applyRoomLayoutPreset(currentConfig, layoutId),
+      );
+      currentConfig = next;
+      callbacks.onConfigChange(next);
     }
-    const next = applyRoomLayoutPreset(currentConfig, layoutId);
-    currentConfig = next;
+    maximumVisitedStep = Math.max(maximumVisitedStep, 2);
     if (catalogDialog.open) catalogDialog.close('selected');
-    callbacks.onConfigChange(next);
   };
 
   for (const category of LAYOUT_CATEGORIES) {
@@ -451,7 +599,10 @@ export function createAppUi(
     const group = document.createElement('section');
     group.className = 'catalog-group';
     group.innerHTML = `
-      <div class="catalog-group-heading"><div><h3>${category.label}</h3><p>${category.description}</p></div><span>${options.length}</span></div>
+      <div class="catalog-group-heading">
+        <div><h3>${category.label}</h3><p>${category.description}</p></div>
+        <span>${options.length}</span>
+      </div>
       <div class="catalog-card-grid"></div>
     `;
     const grid = required<HTMLElement>(group, '.catalog-card-grid');
@@ -468,7 +619,7 @@ export function createAppUi(
           <strong>${escapeHtml(option.label)}</strong>
           <small>${escapeHtml(option.recognitionPrompt)}</small>
         </span>
-        <span class="catalog-card-action">Choose <i aria-hidden="true">→</i></span>
+        <span class="catalog-card-action">Choose this room <i aria-hidden="true">→</i></span>
       `;
       button.addEventListener('click', () => chooseRoomLayout(option.value));
       grid.appendChild(button);
@@ -484,6 +635,7 @@ export function createAppUi(
       (selected ?? required<HTMLButtonElement>(catalogDialog, '.catalog-close')).focus();
     });
   };
+
   selectedLayoutCard.addEventListener('click', () => openCatalog(selectedLayoutCard));
   browseLayouts.addEventListener('click', () => openCatalog(browseLayouts));
   required<HTMLButtonElement>(catalogDialog, '.catalog-close').addEventListener('click', () => catalogDialog.close());
@@ -500,10 +652,89 @@ export function createAppUi(
     ) catalogDialog.close();
   });
 
-  required<HTMLButtonElement>(root, '#reset-model').addEventListener('click', callbacks.onReset);
-  required<HTMLButtonElement>(root, '#fit-placement').addEventListener('click', callbacks.onFitPlacement);
-  required<HTMLButtonElement>(root, '#save-image').addEventListener('click', callbacks.onSaveImage);
-  required<HTMLButtonElement>(root, '#copy-link').addEventListener('click', callbacks.onCopyLink);
+  const setActiveStep = (nextStep: number, focusHeading = true): void => {
+    currentStep = Math.max(1, Math.min(WIZARD_STEPS.length, nextStep));
+    maximumVisitedStep = Math.max(maximumVisitedStep, currentStep);
+    const step = WIZARD_STEPS[currentStep - 1];
+    wizardCount.textContent = `Step ${currentStep} of ${WIZARD_STEPS.length}`;
+    wizardTitle.textContent = step.title;
+    root.querySelectorAll<HTMLElement>('[data-step-page]').forEach((page) => {
+      page.hidden = Number(page.dataset.stepPage) !== currentStep;
+    });
+    root.querySelectorAll<HTMLButtonElement>('[data-step-nav]').forEach((button) => {
+      const number = Number(button.dataset.stepNav);
+      const active = number === currentStep;
+      button.disabled = number > maximumVisitedStep;
+      button.classList.toggle('is-active', active);
+      button.classList.toggle('is-complete', number < currentStep);
+      if (active) button.setAttribute('aria-current', 'step');
+      else button.removeAttribute('aria-current');
+    });
+    wizardBack.hidden = currentStep === 1;
+    if (currentStep === 1) wizardPrimary.innerHTML = 'Continue with this style <span aria-hidden="true">→</span>';
+    if (currentStep === 2) wizardPrimary.innerHTML = 'Measure my space <span aria-hidden="true">→</span>';
+    if (currentStep === 3) wizardPrimary.innerHTML = 'Build my bookcase <span aria-hidden="true">→</span>';
+    if (currentStep === 4) wizardPrimary.innerHTML = 'Save design image <span aria-hidden="true">↓</span>';
+    controlsScroll.scrollTop = 0;
+    if (focusHeading) wizardTitle.focus({ preventScroll: true });
+  };
+
+  bookcaseDesignCard.setAttribute('aria-label', 'Use Classic Shaker and continue');
+  bookcaseDesignCard.addEventListener('click', () => setActiveStep(2));
+  root.querySelectorAll<HTMLButtonElement>('[data-step-nav]').forEach((button) => {
+    button.addEventListener('click', () => setActiveStep(Number(button.dataset.stepNav)));
+  });
+  wizardBack.addEventListener('click', () => setActiveStep(currentStep - 1));
+  wizardPrimary.addEventListener('click', () => {
+    if (currentStep === 1) {
+      setActiveStep(2);
+      return;
+    }
+    if (currentStep === 2) {
+      setActiveStep(3);
+      return;
+    }
+    if (currentStep === 3) {
+      callbacks.onFitPlacement();
+      setActiveStep(4);
+      return;
+    }
+    callbacks.onSaveImage();
+  });
+
+  required<HTMLButtonElement>(root, '#reset-model').addEventListener('click', () => {
+    resetDialog.showModal();
+    requestAnimationFrame(() => required<HTMLButtonElement>(resetDialog, '[data-reset-cancel]').focus());
+  });
+  required<HTMLButtonElement>(resetDialog, '[data-reset-cancel]').addEventListener('click', () => resetDialog.close());
+  required<HTMLButtonElement>(resetDialog, '[data-reset-confirm]').addEventListener('click', () => {
+    callbacks.onReset();
+    maximumVisitedStep = 1;
+    setActiveStep(1);
+    resetDialog.close();
+  });
+  resetDialog.addEventListener('click', (event) => {
+    if (event.target === resetDialog) resetDialog.close();
+  });
+
+  root.querySelectorAll<HTMLButtonElement>('[data-action="save"]').forEach((button) => {
+    button.addEventListener('click', callbacks.onSaveImage);
+  });
+  root.querySelectorAll<HTMLButtonElement>('[data-action="copy"]').forEach((button) => {
+    button.addEventListener('click', callbacks.onCopyLink);
+  });
+
+  root.querySelectorAll<HTMLButtonElement>('[data-cabinet-finish]').forEach((button) => {
+    button.addEventListener('click', () => {
+      updateConfig('cabinetFinish', button.dataset.cabinetFinish ?? 'warm-white');
+    });
+  });
+  placementChoices.addEventListener('keydown', (event) => {
+    handleRadioGroupKeydown(event, placementChoices, '.placement-choice');
+  });
+  finishPicker.addEventListener('keydown', (event) => {
+    handleRadioGroupKeydown(event, finishPicker, '[data-cabinet-finish]');
+  });
 
   const setActiveView = (preset: ViewPreset | null): void => {
     root.querySelectorAll<HTMLButtonElement>('[data-view]').forEach((button) => {
@@ -518,6 +749,7 @@ export function createAppUi(
       const preset = button.dataset.view as ViewPreset;
       setActiveView(preset);
       callbacks.onViewPreset(preset);
+      button.closest<HTMLDetailsElement>('details')?.removeAttribute('open');
     });
   });
 
@@ -542,7 +774,7 @@ export function createAppUi(
       </span>
       <i class="selected-layout-change" aria-hidden="true">Change</i>
     `;
-    selectedLayoutCard.setAttribute('aria-label', `Current layout: ${layoutOption.label}. Open layout catalog.`);
+    selectedLayoutCard.setAttribute('aria-label', `Current room: ${layoutOption.label}. Open room choices.`);
 
     catalogDialog.querySelectorAll<HTMLButtonElement>('[data-layout-id]').forEach((button) => {
       const selected = button.dataset.layoutId === config.roomLayout;
@@ -550,37 +782,45 @@ export function createAppUi(
       button.setAttribute('aria-pressed', String(selected));
     });
 
+    const placementHadFocus = placementChoices.contains(document.activeElement);
     placementChoices.replaceChildren();
-    for (const option of getPlacementOptions(config.roomLayout)) {
+    const placementOptions = getPlacementOptions(config.roomLayout);
+    placementSection.hidden = placementOptions.length < 2;
+    let selectedPlacementButton: HTMLButtonElement | null = null;
+    for (const option of placementOptions) {
       const button = document.createElement('button');
       const selected = option.value === config.placementTarget;
+      const friendlyLabel = friendlyPlacementLabel(config.roomLayout, option.label);
       button.type = 'button';
       button.className = 'placement-choice';
       button.classList.toggle('is-selected', selected);
       button.dataset.placementTarget = option.value;
       button.setAttribute('role', 'radio');
       button.setAttribute('aria-checked', String(selected));
-      button.innerHTML = `<span class="radio-dot" aria-hidden="true"><i></i></span><span>${escapeHtml(option.label)}</span>`;
+      button.tabIndex = selected ? 0 : -1;
+      if (selected) selectedPlacementButton = button;
+      button.innerHTML = `<span class="radio-dot" aria-hidden="true"><i></i></span><span>${escapeHtml(friendlyLabel)}</span>`;
       button.addEventListener('click', () => {
-        const next = { ...currentConfig, placementTarget: option.value };
+        const next = fitBookcasesToSelectedOpening({
+          ...currentConfig,
+          placementTarget: option.value,
+        });
         currentConfig = next;
         callbacks.onConfigChange(next);
       });
       placementChoices.appendChild(button);
     }
-
-    const visibleLayoutKeys = new Set<keyof ModelConfig>(getLayoutDimensionKeys(config.roomLayout));
-    for (const definition of openingFields) {
-      setFieldVisibility(root, definition.key, visibleLayoutKeys.has(definition.key));
+    if (placementHadFocus && selectedPlacementButton) {
+      requestAnimationFrame(() => selectedPlacementButton?.focus());
     }
-    setFieldVisibility(root, 'roomWidth', config.roomLayout !== 'offset-alcove');
-    setFieldVisibility(root, 'roomDepth', config.roomLayout !== 'offset-alcove');
+
+    arrangeMeasurementFields(config);
 
     const activeSides = new Set(derived.bookcasePlacements.map((placement) => placement.sourceSide));
     setFieldVisibility(root, 'leftBookcaseWidth', activeSides.has('left'));
     setFieldVisibility(root, 'rightBookcaseWidth', activeSides.has('right'));
-    setFieldLabel(root, 'leftBookcaseWidth', derived.bookcasePlacements.length === 1 ? 'Selected bookcase width' : 'Left overall width');
-    setFieldLabel(root, 'rightBookcaseWidth', derived.bookcasePlacements.length === 1 ? 'Selected bookcase width' : 'Right overall width');
+    setFieldLabel(root, 'leftBookcaseWidth', derived.bookcasePlacements.length === 1 ? 'Bookcase overall width' : 'Left overall width');
+    setFieldLabel(root, 'rightBookcaseWidth', derived.bookcasePlacements.length === 1 ? 'Bookcase overall width' : 'Right overall width');
     const usesFeatureClearance = [
       'fireplace-wall',
       'window-wall',
@@ -590,11 +830,6 @@ export function createAppUi(
       'media-wall',
     ].includes(config.roomLayout);
     setFieldVisibility(root, 'centerGap', usesFeatureClearance);
-    setFieldLabel(
-      root,
-      'centerGap',
-      config.roomLayout === 'fireplace-wall' ? 'Gap at chimney' : 'Bookcase clearance at feature',
-    );
     setFieldVisibility(root, 'showFire', derived.hasFireplace);
 
     const fireplaceGroup = root.querySelector<HTMLElement>('[data-control-group="fireplace"]');
@@ -604,11 +839,51 @@ export function createAppUi(
     const leftDetailView = root.querySelector<HTMLButtonElement>('[data-view="left-detail"]');
     if (fireplaceView) fireplaceView.hidden = !derived.hasFireplace;
     if (rightDetailView) rightDetailView.hidden = derived.bookcasePlacements.length < 2;
-    if (leftDetailView) leftDetailView.textContent = derived.bookcasePlacements.length < 2 ? 'Bookcase' : 'Left detail';
+    if (rightDetailView) rightDetailView.textContent = 'Right bookcase';
+    if (leftDetailView) leftDetailView.textContent = derived.bookcasePlacements.length < 2 ? 'Bookcase detail' : 'Left bookcase';
+
+    root.querySelectorAll<HTMLButtonElement>('[data-cabinet-finish]').forEach((button) => {
+      const selected = button.dataset.cabinetFinish === config.cabinetFinish;
+      button.classList.toggle('is-selected', selected);
+      button.setAttribute('aria-checked', String(selected));
+      button.tabIndex = selected ? 0 : -1;
+    });
 
     updateSourceCards(layoutOption, baseUrl, sourceNote, drawingCard, secondaryReferenceCard);
     updateWarnings(shell.warningPanel, derived);
     updateDerivedReadout(derivedReadout, derived);
+    updateReviewSummary(root, config, derived);
+  };
+
+  const arrangeMeasurementFields = (config: ModelConfig): void => {
+    const primaryKeys = new Set(PRIMARY_MEASUREMENT_KEYS[config.roomLayout]);
+    const activeLayoutKeys = new Set<keyof ModelConfig>(getLayoutDimensionKeys(config.roomLayout));
+    const sharedRoomKeys = new Set<keyof ModelConfig>(['roomWidth', 'roomDepth', 'roomHeight']);
+    let secondaryCount = 0;
+
+    for (const definition of MEASUREMENT_FIELDS) {
+      const row = measurementRows.get(definition.key);
+      if (!row) continue;
+      const primary = primaryKeys.has(definition.key);
+      const relevant = activeLayoutKeys.has(definition.key) || sharedRoomKeys.has(definition.key);
+      const allowed = config.roomLayout === 'offset-alcove'
+        ? !['roomWidth', 'roomDepth'].includes(String(definition.key))
+        : true;
+      if (primary && allowed) {
+        primaryMeasurementFields.appendChild(row);
+        row.hidden = false;
+      } else if (relevant && allowed) {
+        secondaryMeasurementFields.appendChild(row);
+        row.hidden = false;
+        secondaryCount += 1;
+      } else {
+        secondaryMeasurementFields.appendChild(row);
+        row.hidden = true;
+      }
+    }
+
+    secondaryMeasurements.hidden = secondaryCount === 0;
+    if (secondaryCount === 0) secondaryMeasurements.open = false;
   };
 
   const setPart = (part: PartDisplay | null): void => {
@@ -635,6 +910,7 @@ export function createAppUi(
     `;
   };
 
+  setActiveStep(1, false);
   sync(initialConfig, deriveLayout(initialConfig));
 
   return {
@@ -645,15 +921,6 @@ export function createAppUi(
     setStatus: (message) => { shell.statusText.textContent = message; },
     setFps: (fps) => { shell.fpsText.textContent = fps > 0 ? `${Math.round(fps)} fps` : ''; },
   };
-}
-
-function stepHeading(number: string, title: string, description: string): string {
-  return `
-    <div class="step-heading">
-      <span class="step-number">${number}</span>
-      <div><h3>${escapeHtml(title)}</h3><p>${escapeHtml(description)}</p></div>
-    </div>
-  `;
 }
 
 function layoutSchematic(layoutId: RoomLayoutId): string {
@@ -686,8 +953,8 @@ function updateSourceCards(
   const isSupplied = layoutOption.sourceKind === 'owner-reference';
   sourceNote.className = `source-note ${isSupplied ? 'is-supplied' : 'is-study'}`;
   sourceNote.innerHTML = isSupplied
-    ? `<span class="source-badge is-supplied">Supplied</span><p>This room geometry is interpreted from an owner-supplied reference image. Dimensions without labels remain editable study assumptions.</p>`
-    : `<span class="source-badge is-study">Common scenario</span><p>This catalog room is a generated planning study, not a supplied reference. Replace its editable assumptions with field measurements or customer photos before design approval.</p>`;
+    ? `<span class="source-badge is-supplied">Supplied</span><p>This room is based on an owner-provided image. Unlabeled dimensions are editable planning estimates.</p>`
+    : `<span class="source-badge is-study">Common scenario</span><p>This room is a planning example. Replace its estimates with measurements or photos before a design is approved.</p>`;
 
   if (layoutOption.referenceFile) {
     const referenceUrl = `${baseUrl}${layoutOption.referenceFile}`;
@@ -758,7 +1025,7 @@ function createField(
     numberInput.max = String(definition.max ?? '');
     numberInput.step = String(definition.step ?? 0.125);
     numberInput.value = String(config[definition.key]);
-    numberInput.addEventListener('input', () => {
+    numberInput.addEventListener('change', () => {
       const value = numberInput.valueAsNumber;
       if (Number.isFinite(value)) onChange(definition.key, value);
     });
@@ -783,8 +1050,9 @@ function numberField(
   max: number,
   step: number,
   suffix = 'in',
+  help?: string,
 ): FieldDefinition {
-  return { key, label, min, max, step, suffix, type: 'number' };
+  return { key, label, min, max, step, suffix, type: 'number', help };
 }
 
 function selectField(key: keyof ModelConfig, label: string, options: FieldDefinition['options']): FieldDefinition {
@@ -796,40 +1064,133 @@ function checkboxField(key: keyof ModelConfig, label: string): FieldDefinition {
 }
 
 function updateWarnings(panel: HTMLElement, derived: DerivedLayout): void {
-  if (derived.structuralWarnings.length === 0) {
+  const friendlyWarnings = getCustomerWarnings(derived);
+  if (friendlyWarnings.length === 0) {
     panel.hidden = true;
     panel.innerHTML = '';
     return;
   }
   panel.hidden = false;
   panel.innerHTML = `
-    <strong>Design check</strong>
-    ${derived.structuralWarnings.map((warning) => `<p>${escapeHtml(warning)}</p>`).join('')}
-    <small>Visual model only — final engineering and field verification remain required.</small>
+    <strong>${friendlyWarnings.length === 1 ? 'One thing' : `${friendlyWarnings.length} things`} to review</strong>
+    ${friendlyWarnings.map((warning) => `<p>${escapeHtml(warning)}</p>`).join('')}
+    <small>This is a planning preview. Final dimensions still need field verification.</small>
   `;
+}
+
+export function getCustomerWarnings(derived: DerivedLayout): string[] {
+  return [...new Set(
+    derived.structuralWarnings.map((warning) => friendlyWarning(warning)),
+  )];
+}
+
+function friendlyWarning(warning: string): string {
+  if (warning.includes('above the 36')) {
+    return 'This shelf width needs extra support. A designer will confirm the support detail.';
+  }
+  if (warning.includes('exceeds its selected installation opening')) {
+    return 'The bookcase is wider than the selected space. Update the measurements, then build it again.';
+  }
+  if (warning.includes('projects beyond')) {
+    return 'The base cabinet extends beyond the recessed wall. Confirm the intended front alignment.';
+  }
+  if (warning.includes('top filler')) {
+    return 'There will be extra space above the bookcase. Adjust the overall height for a closer ceiling fit.';
+  }
+  return warning;
 }
 
 function updateDerivedReadout(readout: HTMLElement, derived: DerivedLayout): void {
   readout.classList.toggle('is-single', derived.bookcasePlacements.length === 1);
   required<HTMLElement>(readout, '[data-derived="opening-label"]').textContent = derived.selectedOpeningLabel;
-  required<HTMLElement>(readout, '[data-derived="opening-width"]').textContent = formatInches(derived.selectedOpeningWidth);
+  const openingWidths = derived.bookcasePlacements.map((placement) => placement.openingWidth);
+  const unequalPair = openingWidths.length > 1 &&
+    Math.max(...openingWidths) - Math.min(...openingWidths) > 1e-6;
+  required<HTMLElement>(readout, '[data-derived="opening-width"]').textContent = unequalPair
+    ? 'Varies by side'
+    : formatInches(derived.selectedOpeningWidth);
   for (const index of [0, 1] as const) {
     const card = required<HTMLElement>(readout, `[data-derived-unit="${index}"]`);
     const placement = derived.bookcasePlacements[index];
     card.hidden = !placement;
     if (!placement) continue;
     const isLeft = placement.sourceSide === 'left';
-    const bayWidth = isLeft ? derived.leftBayWidth : derived.rightBayWidth;
-    const shelfThickness = isLeft ? derived.leftAdjustableShelfThickness : derived.rightAdjustableShelfThickness;
     const supportRequired = isLeft ? derived.leftShelfSupportRequired : derived.rightShelfSupportRequired;
-    required<HTMLElement>(card, `[data-derived="unit-${index}-label"]`).textContent = `${placement.label} clear bay`;
-    required<HTMLElement>(card, `[data-derived="unit-${index}-span"]`).textContent = formatInches(bayWidth);
-    required<HTMLElement>(card, `[data-derived="unit-${index}-shelf"]`).textContent = formatShelfValue(shelfThickness, supportRequired);
+    required<HTMLElement>(card, `[data-derived="unit-${index}-label"]`).textContent =
+      derived.bookcasePlacements.length === 1
+        ? 'Bookcase'
+        : placement.sourceSide === 'left' ? 'Left bookcase' : 'Right bookcase';
+    required<HTMLElement>(card, `[data-derived="unit-${index}-width"]`).textContent = `${formatInches(placement.width)} wide`;
+    required<HTMLElement>(card, `[data-derived="unit-${index}-note"]`).textContent = supportRequired
+      ? 'Extra shelf support needed'
+      : `Fits within ${formatInches(placement.openingWidth)}`;
   }
 }
 
-function formatShelfValue(value: number, supportRequired: boolean): string {
-  return `Shelf ${formatInches(value)}${supportRequired ? ' · support required' : ''}`;
+function updateReviewSummary(
+  root: ParentNode,
+  config: ModelConfig,
+  derived: DerivedLayout,
+): void {
+  const placement = getPlacementOptions(config.roomLayout).find(
+    (option) => option.value === config.placementTarget,
+  );
+  const finish = FINISH_OPTIONS.find((option) => option.value === config.cabinetFinish);
+  const sizes = derived.bookcasePlacements
+    .map((item) => formatInches(item.width))
+    .join(' + ');
+  required<HTMLElement>(root, '[data-review-room]').textContent = getRoomLayoutOption(config.roomLayout).label;
+  required<HTMLElement>(root, '[data-review-placement]').textContent = placement
+    ? friendlyPlacementLabel(config.roomLayout, placement.label)
+    : derived.selectedOpeningLabel;
+  required<HTMLElement>(root, '[data-review-size]').textContent = derived.bookcasePlacements.length > 1
+    ? `Left ${formatInches(derived.bookcasePlacements[0].width)} + Right ${formatInches(derived.bookcasePlacements[1].width)} · ${formatInches(config.bookcaseHeight)} H`
+    : `${sizes} W × ${formatInches(config.bookcaseHeight)} H`;
+  required<HTMLElement>(root, '[data-review-finish]').textContent = finish?.label ?? 'Warm white';
+
+  const status = required<HTMLElement>(root, '[data-review-status]');
+  const note = required<HTMLElement>(root, '[data-review-status-note]');
+  const card = required<HTMLElement>(root, '.review-card');
+  const warningCount = getCustomerWarnings(derived).length;
+  const hasWarnings = warningCount > 0;
+  card.classList.toggle('has-warning', hasWarnings);
+  status.textContent = hasWarnings ? 'Your design needs a quick review' : 'Your design is ready';
+  note.textContent = hasWarnings
+    ? `See ${warningCount === 1 ? 'the design note' : `${warningCount} design notes`} on the 3D preview.`
+    : 'It fits the selected opening.';
+}
+
+function friendlyPlacementLabel(layout: RoomLayoutId, label: string): string {
+  if (layout === 'side-nook') {
+    return label.includes('left') ? 'Inside the left-side nook' : 'Inside the right-side nook';
+  }
+  return label.replace('study span', 'position');
+}
+
+function handleRadioGroupKeydown(
+  event: KeyboardEvent,
+  group: HTMLElement,
+  selector: string,
+): void {
+  if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) {
+    return;
+  }
+  const options = [...group.querySelectorAll<HTMLButtonElement>(selector)]
+    .filter((option) => !option.hidden && !option.disabled);
+  if (options.length < 2) return;
+  const currentIndex = options.indexOf(event.target as HTMLButtonElement);
+  if (currentIndex < 0) return;
+  event.preventDefault();
+  let nextIndex = currentIndex;
+  if (event.key === 'Home') nextIndex = 0;
+  else if (event.key === 'End') nextIndex = options.length - 1;
+  else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+    nextIndex = (currentIndex - 1 + options.length) % options.length;
+  } else {
+    nextIndex = (currentIndex + 1) % options.length;
+  }
+  options[nextIndex].focus();
+  options[nextIndex].click();
 }
 
 function setFieldVisibility(root: ParentNode, key: keyof ModelConfig, visible: boolean): void {
