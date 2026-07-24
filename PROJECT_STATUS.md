@@ -2,15 +2,43 @@
 
 **Last updated:** 2026-07-23
 
-**Project stage:** Four-step homeowner planner released and live-verified on GitHub Pages
+**Project stage:** Customer UX polish locally verified; publication pending
 
 **Published branch:** `main`
 
-**Working branch:** `agent/homeowner-planner-publication`
+**Working branch:** `agent/ux-polish-icons`
 
 **Target repository:** `ZimaP/fireplace-bookcases-3d`
 
 **Target public site:** `https://zimap.github.io/fireplace-bookcases-3d/`
+
+## Customer UX polish — locally verified
+
+- Replaced the ten mixed miniature room sketches with one code-native architectural-elevation system. Cabinets, windows, doorways, the fireplace, the media zone, niches, the deep alcove, and the side nook now use stronger outlines, distinct shapes, and consistent colors at both selected-card and catalog sizes.
+- Removed roadmap language and duplicate selection decoration from the one available bookcase design. The first step now presents a clear **Start with this design** action and qualified construction-consistency message.
+- The Measure step now asks whether values are a **Planning estimate** or **Measured by me**, accepts both decimal inches and tape-style fractions such as `67 1/2`, and translates values to familiar feet and inches while the customer types. Invalid text receives an announced inline correction and blocks the review step until fixed.
+- The fitted-size result now appears before the measurement fields, so the main payoff remains above the fold. Entering Measure fits the units before they are displayed, and the primary action is now **Review my design**.
+- Customer-entered room widths and double-window gaps are no longer silently enlarged to manufacture a valid fit. An opening below the current design's 44-inch planning minimum keeps the entered measurement, retains safe minimum cabinet geometry for the preview, and displays a direct **Needs at least 44″** conflict plus a review warning.
+- Completion language now consistently says **planning preview**, records the customer's measurement confidence, and states that final dimensions and site conditions require field verification before approval.
+- Share links include a review marker so recipients open directly on the finished summary. The Finish step also provides **Copy project details**, including the room, placement, fitted size, color, measurement confidence, warnings, verification note, and review-opening URL.
+- Top-bar Share and Save actions were removed from the earlier steps so they no longer compete with the current step's primary action. Detailed controls are now labeled **Advanced details — Designer review recommended**.
+- Focus indicators now use a solid high-contrast ring; room cards use visible titles and descriptions for their accessible names; new radio groups support arrow-key movement; diagrams include forced-colors treatment; and hover movement is suppressed when reduced motion is requested.
+- No drawing-controlled construction value, fixed material thickness, shelf-pin rule, or shelf-stock threshold changed.
+
+Local verification completed on 2026-07-23:
+
+- `npm ci` completed successfully from the committed lockfile.
+- `npm run verify` passed: 5 test files and all 175 tests, TypeScript checking, and the Vite production build.
+- Automated coverage now includes fraction parsing, feet-and-inches formatting, measurement-confidence URL round trips, preservation of constrained wall widths and double-window gaps, explicit minimum-width warnings, all ten room layouts, and all 22 placement targets.
+- A 1440 × 900 browser review covered the redesigned first step, the full ten-card room catalog, upper and lower catalog scroll states, doorway placement, fraction entry and commit, invalid-entry blocking, estimate/measured selection, fitted-size updates, finish selection, qualified review copy, share links, copyable project details, and review-link reopening at Step 4.
+- Required geometry reviews covered the 44-inch minimum practical width, a 108-inch unit with the above-36-inch shelf-support warning, a 150-inch near-full-wall fit without overlap, the default fireplace hero view, and the straight-wall front view.
+- An intentionally undersized 72-inch doorway wall preserved the entered wall width, showed 13-1/2-inch side openings, retained the 44-inch planning model minimum, and displayed one concise customer warning instead of changing the room to force a fit.
+- Browser review showed active WebGL rendering and no console warnings or errors.
+- Current review images are `docs/homeowner-planner-ux-polish-design.png`, `docs/homeowner-planner-ux-polish-room-catalog.png`, `docs/homeowner-planner-ux-polish-room-catalog-lower.png`, `docs/homeowner-planner-ux-polish-measure.png`, `docs/homeowner-planner-ux-polish-finish.png`, and `docs/homeowner-planner-ux-polish-support-warning.png`, each captured at 1440 × 900.
+- `git diff --check` passed.
+- The Vite build continues to emit only the known non-blocking advisory for the minified Three.js bundle exceeding 500 kB.
+
+Publication verification remains pending. Do not treat the local results above as confirmation that the public site contains this release.
 
 ## Homeowner planner UX release — verified
 

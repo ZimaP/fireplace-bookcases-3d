@@ -256,6 +256,29 @@ describe('ten-layout room catalog', () => {
     expect(url.searchParams.has('leftBookcaseWidth')).toBe(false);
   });
 
+  it('round-trips the customer measurement confidence in a shared URL', () => {
+    vi.stubGlobal('window', {
+      location: {
+        search: '',
+        href: 'https://example.test/fireplace-bookcases-3d/',
+      },
+    });
+    const url = new URL(configToUrl({
+      ...DEFAULT_CONFIG,
+      measurementConfidence: 'measured',
+    }));
+
+    expect(url.searchParams.get('measurementConfidence')).toBe('measured');
+
+    vi.stubGlobal('window', {
+      location: {
+        search: url.search,
+        href: url.toString(),
+      },
+    });
+    expect(readConfigFromUrl().measurementConfidence).toBe('measured');
+  });
+
   it.each(ALL_TARGET_CASES)(
     'derives $placementCount contained placement(s) for $roomLayout / $value',
     ({ roomLayout, value, placementCount }) => {
@@ -444,6 +467,51 @@ describe('fit-to-opening behavior', () => {
 });
 
 describe('layout-specific constraints', () => {
+  it.each([
+    ['fireplace-wall', 'fireplace-pair', 120],
+    ['window-wall', 'window-both', 120],
+    ['door-wall', 'door-both', 120],
+    ['offset-window-wall', 'offset-window-both', 120],
+    ['double-window-wall', 'double-window-outer', 180],
+    ['media-wall', 'media-both', 120],
+  ] as const)(
+    'preserves the entered wall width for a constrained %s opening',
+    (roomLayout, placementTarget, roomWidth) => {
+      const config = clampConfig({
+        ...getDefaultConfigForLayout(roomLayout),
+        placementTarget,
+        roomWidth,
+      });
+      const derived = deriveLayout(config);
+
+      expect(config.roomWidth).toBe(roomWidth);
+      expect(derived.bookcasePlacements.some(
+        (placement) => placement.openingWidth < 44,
+      )).toBe(true);
+      expect(derived.structuralWarnings.some(
+        (warning) => warning.includes('below the 44″ minimum'),
+      )).toBe(true);
+    },
+  );
+
+  it('preserves a measured double-window gap instead of enlarging it to force a fit', () => {
+    const config = clampConfig({
+      ...getDefaultConfigForLayout('double-window-wall'),
+      placementTarget: 'double-window-center',
+      roomWidth: 180,
+      doubleWindowGap: 44,
+      centerGap: 8,
+    });
+    const derived = deriveLayout(config);
+
+    expect(config.roomWidth).toBe(180);
+    expect(config.doubleWindowGap).toBe(44);
+    expect(derived.bookcasePlacements[0].openingWidth).toBe(28);
+    expect(derived.structuralWarnings.some(
+      (warning) => warning.includes('Wall between windows is 28″ wide'),
+    )).toBe(true);
+  });
+
   it('preserves valid customer room widths without reserving inactive placement zones', () => {
     const doorway = clampConfig({
       ...getDefaultConfigForLayout('door-wall'),
@@ -524,7 +592,7 @@ describe('layout-specific constraints', () => {
   });
 
   it.each(ALL_TARGET_CASES)(
-    'stays finite, contained, and idempotent for adversarial $roomLayout / $value',
+    'stays finite, explicit, and idempotent for adversarial $roomLayout / $value',
     ({ roomLayout, value, placementCount }) => {
       const config = clampConfig({
         ...getDefaultConfigForLayout(roomLayout),
@@ -568,19 +636,32 @@ describe('layout-specific constraints', () => {
           placement.openingWidth,
         ].every(Number.isFinite)).toBe(true);
         expect(placement.width).toBeGreaterThanOrEqual(44);
-        expect(placement.openingWidth).toBeGreaterThanOrEqual(44);
-        expect(placement.x - placement.width / 2).toBeGreaterThanOrEqual(
-          placement.openingStartX - 1e-7,
-        );
-        expect(placement.x + placement.width / 2).toBeLessThanOrEqual(
-          placement.openingEndX + 1e-7,
-        );
+        expect(placement.openingWidth).toBeGreaterThanOrEqual(0);
+        if (placement.openingWidth >= 44) {
+          expect(placement.x - placement.width / 2).toBeGreaterThanOrEqual(
+            placement.openingStartX - 1e-7,
+          );
+          expect(placement.x + placement.width / 2).toBeLessThanOrEqual(
+            placement.openingEndX + 1e-7,
+          );
+        } else {
+          expect(placement.width).toBe(44);
+          expect(derived.structuralWarnings.some(
+            (warning) =>
+              warning.startsWith(`${placement.label} is`) &&
+              warning.includes('below the 44″ minimum'),
+          )).toBe(true);
+        }
       }
 
       const fitted = fitBookcasesToSelectedOpening(config);
       expect(fitBookcasesToSelectedOpening(fitted)).toEqual(fitted);
       for (const placement of deriveLayout(fitted).bookcasePlacements) {
-        expect(placement.width).toBeLessThanOrEqual(placement.openingWidth + 1e-7);
+        if (placement.openingWidth >= 44) {
+          expect(placement.width).toBeLessThanOrEqual(placement.openingWidth + 1e-7);
+        } else {
+          expect(placement.width).toBe(44);
+        }
         expect(placement.width * 8).toBe(Math.round(placement.width * 8));
       }
     },

@@ -156,7 +156,7 @@ describe('independent parametric layout', () => {
     expect(layout.upperClearHeight).toBeGreaterThan(0);
   });
 
-  it('fits adversarial room inputs without crossing either side wall', () => {
+  it('preserves adversarial fireplace measurements and reports an impossible fit', () => {
     const config = clampConfig({
       ...DEFAULT_CONFIG,
       roomWidth: 150,
@@ -167,14 +167,14 @@ describe('independent parametric layout', () => {
     });
     const layout = deriveLayout(config);
 
-    expect(config.chimneyWidth).toBe(46);
+    expect(config.roomWidth).toBe(150);
+    expect(config.chimneyWidth).toBe(96);
     expect(config.leftBookcaseWidth).toBe(44);
     expect(config.rightBookcaseWidth).toBe(44);
-    expect(layout.leftSideClearance).toBe(0);
-    expect(layout.rightSideClearance).toBe(0);
-    expect(layout.structuralWarnings).not.toContain(
-      'The bookcases overlap the side-wall limits. Reduce unit widths or increase room width.',
-    );
+    expect(layout.bookcasePlacements.map((placement) => placement.openingWidth)).toEqual([19, 19]);
+    expect(layout.structuralWarnings.filter((warning) => warning.includes('below the 44″ minimum')))
+      .toHaveLength(2);
+    expect(layout.structuralWarnings.some((warning) => warning.includes('before approval'))).toBe(true);
     expect(clampConfig(config)).toEqual(config);
   });
 

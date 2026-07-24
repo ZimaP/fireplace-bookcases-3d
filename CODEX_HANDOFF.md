@@ -38,11 +38,11 @@ Continue the prepared fireplace-bookcase baseline inside one shared GitHub repos
 
 - The published site uses four customer steps: **Design**, **Room**, **Measure**, and **Finish**.
 - One bookcase family is currently available: **Classic Shaker built-in**. Do not imply that future families exist until each has approved geometry and construction logic.
-- The Room step exposes ten scenarios and only the placement choices valid for the selected scenario.
-- The Measure step asks for layout-relevant dimensions plus finished bookcase height. Window and door opening widths exclude trim because the model adds separate casing.
-- Number fields commit on blur or Enter, then active bookcase widths fit to the selected opening. Fixed construction values never scale.
-- The Finish step provides four presentation colors, a design review, sharing, and PNG saving. Detailed model controls remain under **Fine-tune your design**.
-- Review screens are under `docs/homeowner-planner-*.png`. Full local and live verification is recorded at the top of `PROJECT_STATUS.md`.
+- The Room step exposes ten scenarios and only the placement choices valid for the selected scenario. All ten cards use one legible architectural-elevation illustration system with distinct visual cues for cabinets, windows, doors, fireplaces, media, niches, alcoves, and nooks.
+- The Measure step asks for layout-relevant dimensions plus finished bookcase height. Window and door opening widths exclude trim because the model adds separate casing. Customers can identify values as estimates or homeowner-measured, enter decimals or fractions such as `67 1/2`, and see feet-and-inches translations.
+- Measurement fields commit on blur or Enter, then active bookcase widths fit to the selected opening. Measured room dimensions are preserved when a selected opening is too narrow; the planner shows the 44-inch minimum conflict instead of silently enlarging the room. Fixed construction values never scale.
+- The Finish step provides four presentation colors, a qualified planning-preview review, review-opening share links, copyable project details, and PNG saving. Detailed model controls remain under **Advanced details**.
+- Current UX-polish review screens are under `docs/homeowner-planner-ux-polish-*.png`. Full local and live verification is recorded at the top of `PROJECT_STATUS.md`.
 - The homeowner planner is published on `main` and live-browser-verified at `https://zimap.github.io/fireplace-bookcases-3d/`.
 
 ## Next Codex mission
@@ -50,7 +50,7 @@ Continue the prepared fireplace-bookcase baseline inside one shared GitHub repos
 1. Run `npm ci` and `npm run verify` before modifying the verified baseline.
 2. Inspect the owner references before changing geometry or construction behavior.
 3. Review the published four-step flow and `docs/homeowner-planner-*.png` with the owner.
-4. The next product phase should either extend Measure into a photo/obstacle/verification workflow or add a genuinely modeled second bookcase family.
+4. The next product phase should either extend Measure into a photo/obstacle/professional-verification workflow or add a genuinely modeled second bookcase family.
 5. Do not present placeholder design cards as available products; every new family needs approved geometry, construction logic, copy, and verification.
 6. Keep recording every merged release, Pages workflow, and live-browser verification in `PROJECT_STATUS.md`.
 

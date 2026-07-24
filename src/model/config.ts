@@ -1,5 +1,6 @@
 export type CabinetFinish = 'warm-white' | 'pure-white' | 'soft-gray' | 'deep-green';
 export type FloorFinish = 'natural-oak' | 'white-oak' | 'walnut';
+export type MeasurementConfidence = 'estimated' | 'measured';
 
 export type RoomLayoutId =
   | 'fireplace-wall'
@@ -231,6 +232,9 @@ export const SHELF_SPAN_LIMITS = Object.freeze([
 /** Presentation guardrail; not a drawing-derived fabrication dimension. */
 export const MINIMUM_SHELF_OPENING = 4;
 
+/** Planning guardrail for the current two-bay cabinet design. */
+const MINIMUM_PLANNING_BOOKCASE_WIDTH = 44;
+
 export interface ModelConfig {
   roomLayout: RoomLayoutId;
   placementTarget: PlacementTarget;
@@ -285,6 +289,7 @@ export interface ModelConfig {
 
   cabinetFinish: CabinetFinish;
   floorFinish: FloorFinish;
+  measurementConfidence: MeasurementConfidence;
   showRoom: boolean;
   showCeiling: boolean;
   showDimensions: boolean;
@@ -348,6 +353,7 @@ export const DEFAULT_CONFIG: ModelConfig = {
 
   cabinetFinish: 'warm-white',
   floorFinish: 'natural-oak',
+  measurementConfidence: 'estimated',
   showRoom: true,
   showCeiling: false,
   showDimensions: false,
@@ -587,8 +593,8 @@ const ranges: Partial<Record<keyof ModelConfig, [number, number]>> = {
   chimneyWidth: [42, 96],
   chimneyDepth: [3, 24],
   chimneyTopInset: [0, 36],
-  leftBookcaseWidth: [44, 180],
-  rightBookcaseWidth: [44, 180],
+  leftBookcaseWidth: [MINIMUM_PLANNING_BOOKCASE_WIDTH, 180],
+  rightBookcaseWidth: [MINIMUM_PLANNING_BOOKCASE_WIDTH, 180],
   bookcaseHeight: [72, 156],
   upperDepth: [10, 22],
   baseDepth: [16, 30],
@@ -687,6 +693,7 @@ export function applyRoomLayoutPreset(config: ModelConfig, layout: RoomLayoutId)
     crownProjection: config.crownProjection,
     cabinetFinish: config.cabinetFinish,
     floorFinish: config.floorFinish,
+    measurementConfidence: config.measurementConfidence,
     showRoom: config.showRoom,
     showCeiling: config.showCeiling,
     showDimensions: config.showDimensions,
@@ -709,6 +716,9 @@ export function clampConfig(input: ModelConfig): ModelConfig {
     roomLayout,
     placementTarget: normalizePlacementTarget(roomLayout, input.placementTarget),
   };
+  output.measurementConfidence = input.measurementConfidence === 'measured'
+    ? 'measured'
+    : 'estimated';
 
   for (const key of numericKeys) {
     const value = Number(output[key]);
@@ -726,7 +736,6 @@ export function clampConfig(input: ModelConfig): ModelConfig {
     output.roomDepth = output.alcoveDepth;
   }
 
-  const minimumBookcaseWidth = ranges.leftBookcaseWidth?.[0] ?? 44;
   output.bookcaseHeight = Math.min(output.bookcaseHeight, output.roomHeight - 0.5);
   output.baseDepth = Math.max(output.baseDepth, output.upperDepth + 1);
   output.baseHeight = Math.min(output.baseHeight, output.bookcaseHeight - 30);
@@ -747,123 +756,6 @@ export function clampConfig(input: ModelConfig): ModelConfig {
   output.sideNookWidth = Math.min(output.sideNookWidth, output.roomWidth);
   output.sideNookDepth = Math.min(output.sideNookDepth, output.roomDepth - 12);
 
-  if (output.roomLayout === 'window-wall') {
-    const requiredRoomWidth =
-      2 * (minimumBookcaseWidth + output.centerGap) +
-      output.windowWidth +
-      2 * ROOM_STUDY.windowCasingWidth;
-    output.roomWidth = Math.min(ranges.roomWidth?.[1] ?? 360, Math.max(output.roomWidth, requiredRoomWidth));
-  }
-
-  if (output.roomLayout === 'offset-window-wall') {
-    const windowOuterWidth = output.windowWidth + 2 * ROOM_STUDY.windowCasingWidth;
-    const windowHalfWidth = windowOuterWidth / 2;
-    let requiredRoomWidth = 2 * (Math.abs(output.windowCenterX) + windowHalfWidth);
-    if (
-      output.placementTarget === 'offset-window-left' ||
-      output.placementTarget === 'offset-window-both'
-    ) {
-      requiredRoomWidth = Math.max(
-        requiredRoomWidth,
-        2 * (
-          minimumBookcaseWidth +
-          windowHalfWidth +
-          output.centerGap -
-          output.windowCenterX
-        ),
-      );
-    }
-    if (
-      output.placementTarget === 'offset-window-right' ||
-      output.placementTarget === 'offset-window-both'
-    ) {
-      requiredRoomWidth = Math.max(
-        requiredRoomWidth,
-        2 * (
-          minimumBookcaseWidth +
-          windowHalfWidth +
-          output.centerGap +
-          output.windowCenterX
-        ),
-      );
-    }
-    output.roomWidth = Math.min(
-      ranges.roomWidth?.[1] ?? 360,
-      Math.max(output.roomWidth, requiredRoomWidth),
-    );
-  }
-
-  if (output.roomLayout === 'door-wall') {
-    const doorOuterWidth = output.doorWidth + 2 * ROOM_STUDY.doorCasingWidth;
-    const doorHalfWidth = doorOuterWidth / 2;
-    let requiredRoomWidth = 2 * (Math.abs(output.doorCenterX) + doorHalfWidth);
-    if (output.placementTarget === 'door-left' || output.placementTarget === 'door-both') {
-      requiredRoomWidth = Math.max(
-        requiredRoomWidth,
-        2 * (
-          minimumBookcaseWidth +
-          doorHalfWidth +
-          output.centerGap -
-          output.doorCenterX
-        ),
-      );
-    }
-    if (output.placementTarget === 'door-right' || output.placementTarget === 'door-both') {
-      requiredRoomWidth = Math.max(
-        requiredRoomWidth,
-        2 * (
-          minimumBookcaseWidth +
-          doorHalfWidth +
-          output.centerGap +
-          output.doorCenterX
-        ),
-      );
-    }
-    output.roomWidth = Math.min(
-      ranges.roomWidth?.[1] ?? 360,
-      Math.max(output.roomWidth, requiredRoomWidth),
-    );
-  }
-
-  if (output.roomLayout === 'double-window-wall') {
-    const maximumRoomWidth = ranges.roomWidth?.[1] ?? 360;
-    const windowOuterWidth = output.windowWidth + 2 * ROOM_STUDY.windowCasingWidth;
-    let requiredRoomWidth: number;
-    if (output.placementTarget === 'double-window-center') {
-      output.doubleWindowGap = Math.max(
-        output.doubleWindowGap,
-        minimumBookcaseWidth + 2 * output.centerGap,
-      );
-      requiredRoomWidth = 2 * windowOuterWidth + output.doubleWindowGap;
-    } else {
-      const minimumDoubleWindowGap = ranges.doubleWindowGap?.[0] ?? 44;
-      const maximumDoubleWindowGap = Math.max(
-        minimumDoubleWindowGap,
-        maximumRoomWidth -
-          2 * windowOuterWidth -
-          2 * (minimumBookcaseWidth + output.centerGap),
-      );
-      output.doubleWindowGap = Math.min(output.doubleWindowGap, maximumDoubleWindowGap);
-      requiredRoomWidth =
-        2 * windowOuterWidth +
-        output.doubleWindowGap +
-        2 * (minimumBookcaseWidth + output.centerGap);
-    }
-    output.roomWidth = Math.min(
-      maximumRoomWidth,
-      Math.max(output.roomWidth, requiredRoomWidth),
-    );
-  }
-
-  if (output.roomLayout === 'media-wall') {
-    const requiredRoomWidth =
-      output.mediaZoneWidth + 2 * (minimumBookcaseWidth + output.centerGap);
-    output.roomWidth = Math.min(
-      ranges.roomWidth?.[1] ?? 360,
-      Math.max(output.roomWidth, requiredRoomWidth),
-    );
-  }
-
   if (output.roomLayout === 'center-niche') {
     output.roomWidth = Math.max(output.roomWidth, output.nicheWidth);
   }
@@ -871,18 +763,6 @@ export function clampConfig(input: ModelConfig): ModelConfig {
     output.roomWidth = Math.max(output.roomWidth, output.sideNookWidth);
   }
   if (output.roomLayout === 'fireplace-wall') {
-    const minimumChimneyWidth = ranges.chimneyWidth?.[0] ?? 42;
-    output.roomWidth = Math.max(
-      output.roomWidth,
-      150,
-      minimumChimneyWidth + 2 * (minimumBookcaseWidth + output.centerGap),
-    );
-    const maximumChimneyWidth = Math.max(
-      minimumChimneyWidth,
-      output.roomWidth - 2 * (minimumBookcaseWidth + output.centerGap),
-    );
-    output.chimneyWidth = Math.min(output.chimneyWidth, maximumChimneyWidth);
-
     output.fireplaceOpeningWidth = Math.min(
       output.fireplaceOpeningWidth,
       Math.max(24, output.chimneyWidth - 14),
@@ -910,7 +790,9 @@ export function clampConfig(input: ModelConfig): ModelConfig {
   const capacities = getActivePlacementCapacities(output);
   for (const capacity of capacities) {
     const key = capacity.sourceSide === 'left' ? 'leftBookcaseWidth' : 'rightBookcaseWidth';
-    output[key] = Math.min(output[key], capacity.openingWidth);
+    output[key] = capacity.openingWidth < MINIMUM_PLANNING_BOOKCASE_WIDTH
+      ? MINIMUM_PLANNING_BOOKCASE_WIDTH
+      : Math.min(output[key], capacity.openingWidth);
   }
 
   const activeSides = new Set(capacities.map((capacity) => capacity.sourceSide));
@@ -994,9 +876,20 @@ export function deriveLayout(config: ModelConfig): DerivedLayout {
       `Right bookcase clear shelf span is ${formatInches(rightBayWidth)}, above the 36″ unsupported limit. Retain 1 1⁄2″ shelf geometry and add a verified support design.`,
     );
   }
+  const undersizedPlacements = placements.filter(
+    (placement) => placement.openingWidth < MINIMUM_PLANNING_BOOKCASE_WIDTH - 1e-6,
+  );
+  for (const placement of undersizedPlacements) {
+    structuralWarnings.push(
+      `${placement.label} is ${formatInches(placement.openingWidth)} wide, below the ${formatInches(MINIMUM_PLANNING_BOOKCASE_WIDTH)} minimum for this bookcase design. Increase the clear opening or choose another placement before approval.`,
+    );
+  }
   if (placements.some((placement) =>
-    placement.x - placement.width / 2 < placement.openingStartX - 1e-6 ||
-    placement.x + placement.width / 2 > placement.openingEndX + 1e-6
+    placement.openingWidth >= MINIMUM_PLANNING_BOOKCASE_WIDTH - 1e-6 &&
+    (
+      placement.x - placement.width / 2 < placement.openingStartX - 1e-6 ||
+      placement.x + placement.width / 2 > placement.openingEndX + 1e-6
+    )
   )) {
     structuralWarnings.push('A bookcase exceeds its selected installation opening. Reduce its width or enlarge the opening.');
   }
@@ -1156,6 +1049,10 @@ export function readConfigFromUrl(): ModelConfig {
   if (floorFinish && ['natural-oak', 'white-oak', 'walnut'].includes(floorFinish)) {
     config.floorFinish = floorFinish as FloorFinish;
   }
+  const measurementConfidence = params.get('measurementConfidence');
+  if (measurementConfidence === 'estimated' || measurementConfidence === 'measured') {
+    config.measurementConfidence = measurementConfidence;
+  }
 
   return clampConfig(config);
 }
@@ -1195,6 +1092,9 @@ export function configToUrl(config: ModelConfig): string {
   if (normalized.floorFinish !== initial.floorFinish) {
     params.set('floorFinish', normalized.floorFinish);
   }
+  if (normalized.measurementConfidence !== initial.measurementConfidence) {
+    params.set('measurementConfidence', normalized.measurementConfidence);
+  }
 
   url.search = params.toString();
   return url.toString();
@@ -1222,15 +1122,24 @@ function getActivePlacementCapacities(config: ModelConfig): PlacementCapacity[] 
     openingStartX: number,
     openingEndX: number,
     anchor: PlacementCapacity['anchor'],
-  ): PlacementCapacity => ({
-    id,
-    sourceSide,
-    label,
-    openingStartX,
-    openingEndX,
-    openingWidth: Math.max(0, openingEndX - openingStartX),
-    anchor,
-  });
+  ): PlacementCapacity => {
+    const roomStartX = -config.roomWidth / 2;
+    const roomEndX = config.roomWidth / 2;
+    const boundedStartX = Math.min(roomEndX, Math.max(roomStartX, openingStartX));
+    const boundedEndX = Math.max(
+      boundedStartX,
+      Math.min(roomEndX, Math.max(roomStartX, openingEndX)),
+    );
+    return {
+      id,
+      sourceSide,
+      label,
+      openingStartX: boundedStartX,
+      openingEndX: boundedEndX,
+      openingWidth: boundedEndX - boundedStartX,
+      anchor,
+    };
+  };
 
   const placementTarget = normalizePlacementTarget(config.roomLayout, config.placementTarget);
   switch (placementTarget) {
