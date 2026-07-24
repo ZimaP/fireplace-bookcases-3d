@@ -2,17 +2,17 @@
 
 **Last updated:** 2026-07-23
 
-**Project stage:** Customer UX polish locally verified; publication pending
+**Project stage:** Customer UX polish published and live-verified
 
 **Published branch:** `main`
 
-**Working branch:** `agent/ux-polish-icons`
+**Working branch:** `agent/record-ux-polish-publication`
 
 **Target repository:** `ZimaP/fireplace-bookcases-3d`
 
 **Target public site:** `https://zimap.github.io/fireplace-bookcases-3d/`
 
-## Customer UX polish — locally verified
+## Customer UX polish — published and live-verified
 
 - Replaced the ten mixed miniature room sketches with one code-native architectural-elevation system. Cabinets, windows, doorways, the fireplace, the media zone, niches, the deep alcove, and the side nook now use stronger outlines, distinct shapes, and consistent colors at both selected-card and catalog sizes.
 - Removed roadmap language and duplicate selection decoration from the one available bookcase design. The first step now presents a clear **Start with this design** action and qualified construction-consistency message.
@@ -38,7 +38,14 @@ Local verification completed on 2026-07-23:
 - `git diff --check` passed.
 - The Vite build continues to emit only the known non-blocking advisory for the minified Three.js bundle exceeding 500 kB.
 
-Publication verification remains pending. Do not treat the local results above as confirmation that the public site contains this release.
+Publication verification completed on 2026-07-23:
+
+- Pull request [#10](https://github.com/ZimaP/fireplace-bookcases-3d/pull/10) merged the UX polish as commit `a9597aa43dea6ef7fece121d2427bdee2769aaeb`.
+- GitHub Pages workflow run [30062937928](https://github.com/ZimaP/fireplace-bookcases-3d/actions/runs/30062937928) completed its build and deployment jobs successfully against that exact commit.
+- The public site opened directly at the shared doorway review state and displayed **Step 4 of 4**, **Your planning preview is ready**, **Measured by me**, and the field-verification disclaimer.
+- Live interaction opened the full room chooser and confirmed all ten redesigned room diagrams, the selected doorway state, the active Three.js canvas, and the customer-facing project summary.
+- **Copy project details** produced the design, room, placement, fitted size, color, measurement confidence, fit result, field-verification note, and review-opening public URL.
+- The deployed browser console had no warnings or errors.
 
 ## Homeowner planner UX release — verified
 
